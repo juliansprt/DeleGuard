@@ -1,0 +1,50 @@
+name: Pull request validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: PR validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check changed lines for whitespace errors
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$BASE_SHA"
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="$(git rev-parse --verify HEAD^ 2>/dev/null || git hash-object -t tree /dev/null)"
+          fi
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            range="$base...HEAD"
+          else
+            range="$base..HEAD"
+          fi
+          git diff --check "$range" -- . ':(exclude)src/Deleguard.Api/wwwroot/lib/**'
+      - name: Validate contribution documentation and images
+        run: python scripts/validate-contribution-docs.py
+      - name: Run existing IDE adapter contracts
+        run: python -m unittest discover -s integrations/ide -p "test_*.py" -v
