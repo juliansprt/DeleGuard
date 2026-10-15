@@ -1,85 +1,85 @@
-# Desarrollo y operación local
+# Local development and operations
 
-[← Volver al README](../README.md)
+[← Back to the README](../README.md)
 
-Esta guía amplía el [inicio rápido](../README.md#inicio-rápido) con configuración, componentes opcionales, validación y diagnóstico. Ejecuta los comandos desde la raíz del repositorio salvo que se indique otra carpeta.
+This guide expands on the [quick start](../README.md#quick-start) with configuration, optional components, validation, and troubleshooting. Run commands from the repository root unless another directory is specified.
 
-## Herramientas opcionales
+## Optional tools
 
-| Uso | Requisito |
+| Purpose | Requirement |
 | --- | --- |
-| Ejemplo de autorización | Python 3, sin paquetes externos |
-| Sitio de documentación local | Node.js **22.12 o superior** y npm |
-| Cliente TypeScript sin compilador | Node.js **22.18 o superior** |
+| Authorization example | Python 3, with no external packages |
+| Local documentation site | Node.js **22.12 or later** and npm |
+| TypeScript client without a compiler | Node.js **22.18 or later** |
 
-No necesitas claves de proveedores de IA para la demo básica. API y worker utilizan los requisitos del inicio rápido: SDK .NET 10, Docker con contenedores Linux y Compose v2.
+You do not need AI provider keys for the basic demo. The API and worker use the quick start prerequisites: the .NET 10 SDK, Docker with Linux containers, and Compose v2.
 
-## Accesos de demostración
+## Demo access
 
-El inicio rápido usa PostgreSQL en `localhost:5432` con base, usuario y contraseña `deleguard`; Redis se publica en `localhost:6379`. API y worker se ejecutan en `Development`. Estas credenciales son públicas y solo sirven para desarrollo local.
+The quick start uses PostgreSQL at `localhost:5432`, with `deleguard` as the database name, username, and password; Redis is exposed at `localhost:6379`. The API and worker run in `Development`. These credentials are public and intended only for local development.
 
-| Uso | Valor local |
+| Purpose | Local value |
 | --- | --- |
-| Correo de la consola | `admin@demo.local` |
-| Contraseña | `DeleguardDemo!23` |
-| Token de recuperación de la consola | `dgc_demo_console_local_dev_only` |
-| Clave del agente para `/v1/authorize` | `dgk_demo_invoice_agent_local_dev_only` |
-| Token de administración para `/mcp` | `dgm_demo_admin_local_dev_only` |
+| Console email | `admin@demo.local` |
+| Password | `DeleguardDemo!23` |
+| Console recovery token | `dgc_demo_console_local_dev_only` |
+| Agent key for `/v1/authorize` | `dgk_demo_invoice_agent_local_dev_only` |
+| Administration token for `/mcp` | `dgm_demo_admin_local_dev_only` |
 
-| Superficie | Dirección |
+| Interface | Address |
 | --- | --- |
-| Consola | `http://127.0.0.1:5080/login` |
-| Aprobaciones | `http://127.0.0.1:5080/approvals` |
-| Salud | `http://127.0.0.1:5080/health` |
-| OpenAPI generado | `http://127.0.0.1:5080/openapi/v1.json` |
-| MCP de administración | `http://127.0.0.1:5080/mcp` |
-| Guard MCP remoto | `http://127.0.0.1:5080/mcp/guard` |
+| Console | `http://127.0.0.1:5080/login` |
+| Approvals | `http://127.0.0.1:5080/approvals` |
+| Health | `http://127.0.0.1:5080/health` |
+| Generated OpenAPI | `http://127.0.0.1:5080/openapi/v1.json` |
+| Administration MCP | `http://127.0.0.1:5080/mcp` |
+| Remote Guard MCP | `http://127.0.0.1:5080/mcp/guard` |
 
-El entorno del agente demo se llama `production`; es un atributo de su registro de negocio, independiente del entorno .NET `Development`.
+The demo agent's environment is named `production`; this is an attribute of its business registration, independent of the .NET `Development` environment.
 
-## Configuración
+## Configuration
 
-La API y el worker leen sus respectivos `appsettings.json` y variables de entorno .NET. Usa doble guion bajo (`__`) para las claves anidadas. Por ejemplo, si PostgreSQL usa otro puerto, configura la misma conexión en **ambas terminales**, antes de arrancar los procesos:
+The API and worker read their respective `appsettings.json` files and .NET environment variables. Use double underscores (`__`) for nested keys. For example, if PostgreSQL uses a different port, set the same connection in **both terminals** before starting the processes:
 
 ```powershell
-$env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=deleguard;Username=deleguard;Password=TU_CLAVE_LOCAL"
+$env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=deleguard;Username=deleguard;Password=YOUR_LOCAL_PASSWORD"
 ```
 
-| Variable | Función |
+| Variable | Purpose |
 | --- | --- |
-| `ASPNETCORE_ENVIRONMENT`, `DOTNET_ENVIRONMENT` | Entorno de ejecución. Usa `Development` en el inicio local. |
-| `ConnectionStrings__Postgres` | Conexión PostgreSQL compartida por API y worker. |
-| `Permits__SigningKey` | Clave de firma de permisos; debe coincidir en los procesos que la utilizan. |
-| `DemoAuth__ApiKeyPepper` | Pepper para hashes de credenciales. Cambiarlo invalida credenciales existentes. |
-| `DemoAuth__ConsoleToken`, `DemoAuth__AllowEmergencyConsoleToken` | Acceso local de recuperación. |
-| `Webhooks__ProtectionKey` | Clave de protección de secretos de webhooks; debe coincidir entre API y worker. |
-| `Webhooks__AllowLoopback`, `Webhooks__AllowInsecureHttp` | Excepciones para probar webhooks locales; desactivadas por defecto en el arranque local. |
-| `Oidc__Enabled`, `Oidc__Authority`, `Oidc__ClientId`, `Oidc__ClientSecret` | Inicio de sesión mediante proveedor OIDC. |
-| `Oidc__RequireVerifiedEmail` | Exige correo verificado con OIDC. |
-| `DataProtection__KeyPath` | Directorio persistente de claves de sesión; por defecto, `dpkeys` dentro del proyecto API. |
-| `Docs__PublicUrl` | Enlace al sitio de documentación; por defecto `http://localhost:4321`. |
+| `ASPNETCORE_ENVIRONMENT`, `DOTNET_ENVIRONMENT` | Runtime environment. Use `Development` for local startup. |
+| `ConnectionStrings__Postgres` | PostgreSQL connection shared by the API and worker. |
+| `Permits__SigningKey` | Permit signing key; it must match across processes that use it. |
+| `DemoAuth__ApiKeyPepper` | Pepper for credential hashes. Changing it invalidates existing credentials. |
+| `DemoAuth__ConsoleToken`, `DemoAuth__AllowEmergencyConsoleToken` | Local recovery access. |
+| `Webhooks__ProtectionKey` | Webhook secret protection key; it must match between the API and worker. |
+| `Webhooks__AllowLoopback`, `Webhooks__AllowInsecureHttp` | Exceptions for testing local webhooks; disabled by default during local startup. |
+| `Oidc__Enabled`, `Oidc__Authority`, `Oidc__ClientId`, `Oidc__ClientSecret` | Sign-in through an OIDC provider. |
+| `Oidc__RequireVerifiedEmail` | Requires a verified email address with OIDC. |
+| `DataProtection__KeyPath` | Persistent directory for session keys; defaults to `dpkeys` inside the API project. |
+| `Docs__PublicUrl` | Link to the documentation site; defaults to `http://localhost:4321`. |
 
-Un archivo `.env` no se carga automáticamente al ejecutar `dotnet run`. Exporta las variables en cada terminal o utiliza un gestor de secretos. No guardes claves reales en archivos versionados.
+A `.env` file is not loaded automatically when running `dotnet run`. Export the variables in each terminal or use a secrets manager. Do not commit real keys to version control.
 
-### Docker Compose completo y producción
+### Full Docker Compose stack and production
 
-[deploy/docker-compose.yml](../deploy/docker-compose.yml) también define imágenes para API, worker, documentación, Keycloak y Mailpit. **El stack completo requiere ajustar su configuración antes de ejecutarlo**: actualmente declara la API como `Production`, pero incluye claves demo, OIDC HTTP y excepciones de webhooks que la aplicación rechaza. Utiliza el inicio local anterior para una demostración reproducible.
+[deploy/docker-compose.yml](../deploy/docker-compose.yml) also defines images for the API, worker, documentation, Keycloak, and Mailpit. **The full stack requires configuration changes before running it**: it currently sets the API to `Production` while including demo keys, HTTP OIDC, and webhook exceptions that the application rejects. Use the [local quick start](../README.md#quick-start) for a reproducible demo.
 
-La aplicación valida en producción: secretos únicos de al menos 32 caracteres para firma, pepper y webhooks; PostgreSQL con contraseña propia y `SSL Mode=VerifyFull`; OIDC con HTTPS y correo verificado; claves de Data Protection persistentes; y ausencia de tokens demo o excepciones inseguras de webhooks. En producción no se cargan los datos demo y las migraciones deben ejecutarse como un paso controlado con `--migrate-only` antes de iniciar API y worker. Consulta [Program.cs](../src/Deleguard.Api/Program.cs) y [ProductionConfiguration.cs](../src/Deleguard.Infrastructure/ProductionConfiguration.cs) para las condiciones exactas.
+In production, the application requires unique secrets of at least 32 characters for signing, the pepper, and webhooks; PostgreSQL with its own password and `SSL Mode=VerifyFull`; OIDC with HTTPS and verified email; persistent Data Protection keys; and no demo tokens or insecure webhook exceptions. Demo data is not loaded in production, and migrations must run as a controlled step with `--migrate-only` before starting the API and worker. See [Program.cs](../src/Deleguard.Api/Program.cs) and [ProductionConfiguration.cs](../src/Deleguard.Infrastructure/ProductionConfiguration.cs) for the exact conditions.
 
-El archivo [docker-compose.dev.yml](../deploy/docker-compose.dev.yml) es un override de PostgreSQL en memoria, no un override de entorno para toda la aplicación. Solo úsalo con datos descartables: el contenido de esa base se pierde al detener o recrear su contenedor.
+[docker-compose.dev.yml](../deploy/docker-compose.dev.yml) is an override for in-memory PostgreSQL storage, not an environment override for the entire application. Use it only with disposable data: that database's contents are lost when its container is stopped or recreated.
 
-## Componentes opcionales
+## Optional components
 
-### Sitio de documentación
+### Documentation site
 
-Documentación de uso en español e inglés, con guías de integración y capturas de la consola. Puedes ejecutarla sin instalar Node en tu equipo:
+User documentation in English and Spanish, with integration guides and console screenshots. You can run it without installing Node on your computer:
 
 ```powershell
 docker compose -f deploy/docker-compose.yml up -d --build docs
 ```
 
-Abre [http://localhost:4321](http://localhost:4321). Para editarla con Node y npm:
+Open [http://localhost:4321/en/](http://localhost:4321/en/) for English documentation. Spanish documentation is available at [http://localhost:4321/](http://localhost:4321/). To edit the site with Node and npm:
 
 ```powershell
 cd docs-site
@@ -87,11 +87,11 @@ npm ci
 npm run dev
 ```
 
-Para verificar la compilación estática, ejecuta `npm run build` desde `docs-site`. Consulta su [README](../docs-site/README.md).
+To check the static build, run `npm run build` from `docs-site`. See its [README](../docs-site/README.md).
 
-### Agente de demostración con interfaz web
+### Demo agent web interface
 
-Con la API funcionando, abre otra terminal desde la raíz:
+With the API running, open another terminal at the repository root:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -100,19 +100,19 @@ $env:DELEGUARD_URL = "http://127.0.0.1:5080"
 dotnet run --project demo/Deleguard.DemoAgent --no-launch-profile --urls http://127.0.0.1:5280
 ```
 
-Abre [http://127.0.0.1:5280](http://127.0.0.1:5280). Sin `OPENAI_API_KEY`, el agente usa un intérprete local de demostración. El proveedor de IA es opcional y se configura solamente en este proceso.
+Open [http://127.0.0.1:5280](http://127.0.0.1:5280). Without `OPENAI_API_KEY`, the agent uses a local demo interpreter. The AI provider is optional and is configured only in this process.
 
-### MCP, AI Gateway e integración con IDE
+### MCP, AI Gateway, and IDE integration
 
-- **Guard MCP remoto:** se sirve desde `/mcp/guard` en la API y usa claves de agente `dgk_`. Configura los servidores MCP remotos HTTPS, acciones y políticas en la consola. Las herramientas sin mapeo no se autorizan.
-- **MCP de administración:** `/mcp` utiliza tokens `dgm_` separados de las claves de agente. El token demo está disponible en `Development`.
-- **AI Gateway:** proceso independiente compatible con OpenAI en `http://127.0.0.1:5088/v1`. Configura el catálogo en la consola y `Providers__openai__ApiKey` en el gateway; inicia con `dotnet run --project src/Deleguard.AiGateway --no-launch-profile --urls http://127.0.0.1:5088`. Lee su [guía](../src/Deleguard.AiGateway/README.md). Las claves del proveedor permanecen en el gateway; solo los metadatos se envían a autorización.
-- **IDE y cliente de escritorio:** consulta la [guía de conexión por proyecto](../integrations/ide/README.md) y el [contrato del instalador portable](../deleguard_dev_pack/spec/portable-installer.md). La publicación del código fuente no incluye instaladores firmados.
-- El [adaptador MCP local heredado](../src/Deleguard.McpGuard/README.md) se conserva por compatibilidad; las nuevas conexiones usan el Guard remoto.
+- **Remote Guard MCP:** served by the API at `/mcp/guard`, using `dgk_` agent keys. Configure HTTPS remote MCP servers, actions, and policies in the console. Unmapped tools are not authorized.
+- **Administration MCP:** `/mcp` uses `dgm_` tokens, separate from agent keys. The demo token is available in `Development`.
+- **AI Gateway:** a separate OpenAI-compatible process at `http://127.0.0.1:5088/v1`. Configure the catalog in the console and `Providers__openai__ApiKey` in the gateway; start it with `dotnet run --project src/Deleguard.AiGateway --no-launch-profile --urls http://127.0.0.1:5088`. Read its [guide](../src/Deleguard.AiGateway/README.md). Provider keys remain in the gateway; only metadata is sent for authorization.
+- **IDE and desktop client:** see the [per-project connection guide](../integrations/ide/README.md) and [portable installer contract](../deleguard_dev_pack/spec/portable-installer.md). Publishing the source code does not include signed installers.
+- The [legacy local MCP adapter](../src/Deleguard.McpGuard/README.md) is retained for compatibility; new connections use the remote Guard.
 
-## Compilar y validar
+## Build and validation
 
-Desde la raíz, con el SDK .NET 10:
+From the repository root, with the .NET 10 SDK:
 
 ```powershell
 dotnet build Deleguard.slnx
@@ -121,64 +121,64 @@ dotnet test tests/Deleguard.DemoAgent.Tests
 dotnet test tests/Deleguard.Desktop.Tests
 ```
 
-Las suites de integración y seguridad necesitan Docker activo: crean bases PostgreSQL desechables con Testcontainers. No requieren tener la API local abierta.
+The integration and security suites require Docker to be running: they create disposable PostgreSQL databases with Testcontainers. They do not require the local API to be running.
 
 ```powershell
 dotnet test tests/Deleguard.IntegrationTests
 dotnet test tests/Deleguard.SecurityTests
 ```
 
-Para ejecutar la verificación de aceptación usada en CI, necesitas además Python y Node.js:
+To run the acceptance checks used in CI, you also need Python and Node.js:
 
 ```powershell
 pwsh -File scripts/v1/verify.ps1
 ```
 
-Ese script comprueba las suites principales, el cliente .NET, los contratos del adaptador IDE y la carga de los clientes Python y TypeScript.
+This script checks the main suites, the .NET client, the IDE adapter contracts, and loading the Python and TypeScript clients.
 
-### Estado de la validación inicial
+### Initial validation results
 
-Se verificaron la compilación Release, el arranque de API y worker, `/health` y las tres decisiones del ejemplo Python. Pasaron 534 pruebas unitarias, 36 de seguridad, 98 de integración y 15 del agente demo. El sitio de documentación también compiló correctamente.
+The Release build, API and worker startup, `/health`, and all three decisions in the Python example were verified. The following tests passed: 534 unit tests, 36 security tests, 98 integration tests, and 15 demo agent tests. The documentation site also built successfully.
 
-Quedan dos incidencias conocidas: NuGet informa `NU1902`/`NU1903` para `System.Security.Cryptography.Pkcs` y `System.Security.Cryptography.Xml` 10.0.12; el script de aceptación trata `NU1903` y `NU1904` como errores. La suite de escritorio pasó 21 pruebas, omitió una y falló en la comprobación de ancho de ventana de [WindowTests.cs](../tests/Deleguard.Desktop.Tests/WindowTests.cs) en modo headless. El inicio local documentado funcionó; estas incidencias siguen pendientes de corrección.
+Two known issues remain: NuGet reports `NU1902`/`NU1903` for `System.Security.Cryptography.Pkcs` and `System.Security.Cryptography.Xml` 10.0.12; the acceptance script treats `NU1903` and `NU1904` as errors. The desktop suite passed 21 tests, skipped one, and failed the window width check in [WindowTests.cs](../tests/Deleguard.Desktop.Tests/WindowTests.cs) in headless mode. The documented local startup worked; these issues are still pending resolution.
 
-## Estructura del repositorio
+## Repository structure
 
-| Ruta | Contenido |
+| Path | Contents |
 | --- | --- |
-| `src/Deleguard.Api` | HTTP, consola Razor y endpoints MCP |
-| `src/Deleguard.Application` | Casos de uso y contratos de aplicación |
-| `src/Deleguard.Domain` | Entidades e invariantes |
-| `src/Deleguard.Policy` | DSL YAML y motor de decisiones nativo |
-| `src/Deleguard.Infrastructure` | Persistencia EF Core, credenciales, permisos y datos demo |
-| `src/Deleguard.Workers` | Outbox, webhooks, vencimientos y retención |
-| `src/Deleguard.AiGateway` | Gateway opcional para proveedores de IA |
-| `src/Deleguard.Desktop`, `src/Deleguard.Desktop.Core` | Cliente de conexión por proyecto |
-| `demo/`, `examples/`, `sdks/` | Demo y clientes de integración |
-| `policies/` | Políticas de producto y fixtures |
-| `integrations/ide/` | Adaptadores para IDE |
-| `docs-site/` | Documentación Astro/Starlight |
-| `deploy/`, `.github/workflows/` | Contenedores y automatización de validación |
-| `deleguard_dev_pack/` | PRD, ADRs, contratos y material de diseño; no es código de ejecución |
+| `src/Deleguard.Api` | HTTP, Razor console, and MCP endpoints |
+| `src/Deleguard.Application` | Use cases and application contracts |
+| `src/Deleguard.Domain` | Entities and invariants |
+| `src/Deleguard.Policy` | YAML DSL and native decision engine |
+| `src/Deleguard.Infrastructure` | EF Core persistence, credentials, permits, and demo data |
+| `src/Deleguard.Workers` | Outbox, webhooks, expiry, and retention |
+| `src/Deleguard.AiGateway` | Optional gateway for AI providers |
+| `src/Deleguard.Desktop`, `src/Deleguard.Desktop.Core` | Per-project connection client |
+| `demo/`, `examples/`, `sdks/` | Demo and integration clients |
+| `policies/` | Product policies and fixtures |
+| `integrations/ide/` | IDE adapters |
+| `docs-site/` | Astro/Starlight documentation |
+| `deploy/`, `.github/workflows/` | Containers and validation automation |
+| `deleguard_dev_pack/` | PRD, ADRs, contracts, and design material; not runtime code |
 
-Para conocer los contratos, empieza por [START_HERE](../deleguard_dev_pack/START_HERE.md), el [PRD](../deleguard_dev_pack/docs/02_PRD_MVP.md), [OpenAPI](../deleguard_dev_pack/spec/openapi.yaml) y el [contrato de ejecución](../deleguard_dev_pack/spec/execution-v1.md).
+For the contracts, start with [START_HERE](../deleguard_dev_pack/START_HERE.md), the [PRD](../deleguard_dev_pack/docs/02_PRD_MVP.md), [OpenAPI](../deleguard_dev_pack/spec/openapi.yaml), and the [execution contract](../deleguard_dev_pack/spec/execution-v1.md).
 
-## Detener y resolver problemas locales
+## Stopping services and troubleshooting
 
-Detén API y worker con `Ctrl+C` en sus respectivas terminales. Para detener los contenedores conservando el volumen:
+Stop the API and worker with `Ctrl+C` in their respective terminals. To stop the containers while preserving the volume:
 
 ```powershell
 docker compose -f deploy/docker-compose.yml down
 ```
 
-| Síntoma | Comprobación |
+| Symptom | Check |
 | --- | --- |
-| No conecta con PostgreSQL o `/health` falla | Revisa `docker compose -f deploy/docker-compose.yml ps` y la conexión configurada en ambos procesos. |
-| El puerto 5432, 6379, 5080 o 4321 está ocupado | Libera el puerto o ajusta el mapeo/URL y las conexiones que lo usan. |
-| Aparece `Production requires...` al iniciar | En el inicio local, configura las dos variables de entorno como `Development` en esa terminal. |
-| El ejemplo Python intenta acceder a 8080 | Exporta `DELEGUARD_URL=http://127.0.0.1:5080`; el valor por defecto del script es otro puerto. |
-| `401` al llamar autorización | Usa la clave `dgk_` del agente; los tokens `dgc_` y `dgm_` corresponden a otras superficies. |
-| `DENY` inesperado | Verifica organización, aplicación, agente, entorno, acciones concedidas y política publicada. Una acción sin política aplicable se deniega. |
-| Una aprobación no permite ejecutar | Revisa rol del aprobador, vencimiento y estado de la decisión; consulta y consume el permiso vigente antes de ejecutar. |
+| PostgreSQL connection fails or `/health` fails | Check `docker compose -f deploy/docker-compose.yml ps` and the connection configured in both processes. |
+| Port 5432, 6379, 5080, or 4321 is in use | Free the port or adjust its mapping/URL and the connections that use it. |
+| `Production requires...` appears at startup | For local startup, set both environment variables to `Development` in that terminal. |
+| The Python example tries to access port 8080 | Export `DELEGUARD_URL=http://127.0.0.1:5080`; the script defaults to a different port. |
+| Authorization calls return `401` | Use the agent's `dgk_` key; `dgc_` and `dgm_` tokens are for other interfaces. |
+| Unexpected `DENY` | Verify the organization, application, agent, environment, granted actions, and published policy. An action with no applicable policy is denied. |
+| An approval does not allow execution | Check the approver's role, expiry, and decision status; retrieve and consume the current permit before executing. |
 
-Para revisar los servicios de datos: `docker compose -f deploy/docker-compose.yml logs postgres redis`. Elimina un volumen únicamente si deseas descartar explícitamente sus datos.
+To inspect the data services, run `docker compose -f deploy/docker-compose.yml logs postgres redis`. Delete a volume only when you explicitly want to discard its data.
