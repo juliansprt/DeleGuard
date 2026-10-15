@@ -217,6 +217,12 @@ pwsh -File scripts/v1/verify.ps1
 
 Ese script comprueba las suites principales, el cliente .NET, los contratos del adaptador IDE y la carga de los clientes Python y TypeScript.
 
+### Estado de la validación inicial
+
+Se verificaron la compilación Release, el arranque de API y worker, `/health` y las tres decisiones del ejemplo Python. Pasaron 534 pruebas unitarias, 36 de seguridad, 98 de integración y 15 del agente demo. El sitio de documentación también compiló correctamente.
+
+Quedan dos incidencias conocidas: NuGet informa `NU1902`/`NU1903` para `System.Security.Cryptography.Pkcs` y `System.Security.Cryptography.Xml` 10.0.12; el script de aceptación trata `NU1903` y `NU1904` como errores. La suite de escritorio pasó 21 pruebas, omitió una y falló en la comprobación de ancho de ventana de [WindowTests.cs](tests/Deleguard.Desktop.Tests/WindowTests.cs) en modo headless. El inicio local documentado funcionó; estas incidencias siguen pendientes de corrección.
+
 ## Estructura del repositorio
 
 | Ruta | Contenido |
