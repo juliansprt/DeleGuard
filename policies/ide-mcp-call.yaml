@@ -1,0 +1,19 @@
+# Restrictive example; configure project identity and run fixtures before publishing.
+id: "ide-mcp-call"
+version: 1
+priority: 100
+match:
+  action: "mcp.call"
+  resource_type: "mcp"
+rules:
+  - name: "review-project-operation"
+    when:
+      field: "resource.attributes.project_id"
+      op: "eq"
+      value: "ide-demo"
+    effect: "REQUIRE_APPROVAL"
+    approval:
+      expires_in: "15m"
+      approver_roles:
+        - "org-admin"
+fallback: "DENY"

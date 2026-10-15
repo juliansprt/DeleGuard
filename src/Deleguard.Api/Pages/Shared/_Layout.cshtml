@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="@T.Language">
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>@T[ViewData["Title"]?.ToString()] · Deleguard</title><partial name="_HeadAssets" /></head>
+<body class="console-experience">
+@{ var nav=ViewData["Nav"] as string ?? ""; var signedIn=Context.IsConsole(); var user=Context.GetConsoleUser(); var modules=ConsoleGuide.For(user).ToList(); }
+    <a class="skip-link" href="#main-content">@T["Saltar al contenido"]</a>
+    <div class="backdrop" data-sidebar-backdrop></div>
+    <div class="shell">
+        <aside class="sidebar" id="main-sidebar">
+            <a class="brand" href="/"><partial name="_BrandMark" /><span class="brand-wordmark">Deleguard</span></a>
+            @if(signedIn && Chrome.ProductApplications.Count>0){
+                <form method="post" asp-page="/Settings/Index" asp-page-handler="Select" class="app-switcher"><label for="nav-application">@T["Aplicación actual"]</label><select id="nav-application" name="ApplicationId" onchange="this.form.submit()">@foreach(var app in Chrome.ProductApplications){<option value="@app.Id" selected="@(app.Id==Chrome.CurrentApplication?.Id ? "selected" : null)">@app.Name</option>}</select><input type="hidden" name="ReturnUrl" value="@Context.Request.Path@Context.Request.QueryString" /><noscript><button>@T["Seleccionar"]</button></noscript></form>
+            }
+            <nav aria-label="@T["Navegación principal"]" class="main-nav">
+                <a class="nav-item @(nav=="overview" ? "active" : null)" href="/" aria-current="@(nav=="overview" ? "page" : null)"><span class="nav-symbol" aria-hidden="true">▦</span>@T["Resumen"]</a>
+                @if(signedIn){
+                    <a class="nav-item nav-start @(nav=="start" ? "active" : null)" href="/start" aria-current="@(nav=="start" ? "page" : null)"><span class="nav-symbol" aria-hidden="true">✧</span>@T["Inicio rápido"]<span class="nav-pill">@T["Guía"]</span></a>
+                    @foreach(var group in new[]{"Conectar","Proteger","Supervisar"}){
+                        var entries=modules.Where(m=>m.Group==group).ToList();
+                        if(entries.Count>0){<div class="nav-section"><div class="nav-group-label">@T[group]</div>@foreach(var item in entries){<a class="nav-item @(nav==item.Key ? "active" : null)" href="@item.Url" aria-current="@(nav==item.Key ? "page" : null)"><span class="nav-symbol" aria-hidden="true">@item.Symbol</span>@T[item.Title]</a>}</div>}
+                    }
+                    @foreach(var group in new[]{"Integraciones","Administrar"}){
+                        var entries=modules.Where(m=>m.Group==group).ToList();
+                        if(entries.Count>0){<details class="nav-group" open="@(entries.Any(m=>m.Key==nav) ? "open" : null)"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]" class="nav-group-label">@T[group] @(group=="Integraciones" ? T["· opcional"] : "")</summary>@foreach(var item in entries){<a class="nav-item @(nav==item.Key ? "active" : null)" href="@item.Url" aria-current="@(nav==item.Key ? "page" : null)"><span class="nav-symbol" aria-hidden="true">@item.Symbol</span>@T[item.Title]</a>}</details>}
+                    }
+                    @if(user?.IsPlatformAdmin==true && !string.IsNullOrWhiteSpace(Oidc.Value.KeycloakAdminUrl)){<a class="nav-item" href="@Oidc.Value.KeycloakAdminUrl" target="_blank" rel="noopener">@T["Identidad (Keycloak) ↗"]</a>}
+                }
+            </nav>
+            <div class="sidebar-foot">
+                @if(signedIn){<a class="sidebar-help" href="/start#modules"><span aria-hidden="true">?</span><div><strong>@T["¿Por dónde sigo?"]</strong><small>@T["Explora la guía de uso"]</small></div></a><div class="sidebar-user"><span class="user-avatar" aria-hidden="true">@(user?.DisplayName?.FirstOrDefault().ToString().ToUpperInvariant() ?? "U")</span><div><strong>@(user?.DisplayName ?? user?.Email)</strong><small>@string.Join(", ",user?.Roles ?? [])</small></div></div><form method="post" asp-page="/Login" asp-page-handler="Logout"><button type="submit" class="ghost compact">@T["Cerrar sesión"]</button></form>}
+                else{<a class="nav-item" href="/login">@T["Iniciar sesión"]</a>}
+            </div>
+        </aside>
+        <div class="content"><div class="mobile-bar"><button type="button" class="icon-btn" data-sidebar-toggle aria-label="@T["Abrir menú"]" aria-expanded="false" aria-controls="main-sidebar">☰</button><a class="brand" href="/"><partial name="_BrandMark" /><span class="brand-wordmark">Deleguard</span></a></div>
+            <div class="workspace-bar"><partial name="_LanguageSelector" /><span>@Chrome.CurrentApplication?.Name <span class="muted">/ @T[ViewData["Title"]?.ToString()]</span></span>@if(signedIn){<a href="/start#modules">@T["Guía de uso ↗"]</a>}</div>
+            <main class="container" id="main-content" tabindex="-1">@RenderBody()</main>
+        </div>
+    </div>
+    <div id="clipboard-status" class="sr-only" role="status" aria-live="polite"></div>
+    <script src="~/js/site.js" asp-append-version="true"></script><script src="~/js/experience.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts",required:false)
+</body></html>

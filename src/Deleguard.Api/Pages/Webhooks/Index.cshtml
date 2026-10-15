@@ -1,0 +1,122 @@
+@page "/webhooks"
+@model Deleguard.Api.Pages.Webhooks.IndexModel
+@{
+    ViewData["Title"] = "Webhooks";
+    ViewData["Nav"] = "webhooks";
+}
+
+<partial name="_PageHeader" model='("Webhooks", "Conecta tus servicios para recibir decisiones, aprobaciones y resultados. Es opcional para empezar.")' />
+
+@if(Model.CanWrite){
+<section class="card" aria-label="@T["Set up this integration"]"><h2 class="section-title">@T["Set up this integration"]</h2><ol class="journey-steps compact-journey">
+    <li><span class="step-number">1</span><div><strong><a href="#webhook-create">@T["Add your endpoint"]</a></strong><small>@T["Name the connection and enter the HTTPS address of your service."]</small></div></li>
+    <li><span class="step-number">2</span><div><strong><a href="#webhook-create">@T["Verify event signatures"]</a></strong><small>@T["Save the signing secret when it is shown and configure verification in your service."]</small></div></li>
+    <li><span class="step-number">3</span><div><strong><a href="#webhook-connections">@T["Test delivery"]</a></strong><small>@T["Open the connection, send a test event and inspect the delivery result."]</small></div></li>
+</ol><a class="button ghost" href="@(Model.Endpoints.Count==0 && Model.CanWrite ? "#webhook-create" : "#webhook-connections")">@T["Continue setup"] →</a></section>
+}
+@if (!string.IsNullOrEmpty(Model.RevealedSecret))
+{
+    <div class="flash flash-secret" role="status">
+        <p style="margin:0 0 0.5rem"><strong>@T["Store this signing secret now."]</strong> @T["It will not be shown again."]</p>
+        <p class="secret" id="revealed-secret">@Model.RevealedSecret</p>
+        <p class="row" style="margin:0.75rem 0 0">
+            <button type="button" class="ghost" data-copy-target="#revealed-secret" data-copy>@T["Copy"]</button>
+            <span class="muted">@T["Prefix"] @Model.RevealedPrefix</span>
+        </p>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+<div class="card">
+    <div class="card-head">
+        <h2 id="webhook-connections">@T["Endpoints"]</h2>
+    </div>
+    <div class="filter-bar">
+        <form method="get" class="row filter-search" role="search">
+            <label class="sr-only" for="webhook-search">@T["Search webhooks"]</label>
+            <input id="webhook-search" name="q" value="@Model.Q" placeholder="@T["Search description, URL, or event"]" autocomplete="off" />
+            <button type="submit" class="ghost">@T["Search"]</button>
+        </form>
+    </div>
+    @if (Model.Endpoints.Count == 0)
+    {
+        @if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No matching webhooks", "Clear the search or try another URL or event type.")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No webhooks yet", "Add an HTTPS endpoint to receive signed events.")' />
+        }
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>@T["Description"]</th>
+                        <th>URL</th>
+                        <th>@T["Status"]</th>
+                        <th>@T["Events"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var endpoint in Model.Endpoints)
+                {
+                    <tr>
+                        <td>@endpoint.Description</td>
+                        <td class="hash">@endpoint.Url</td>
+                        <td><span class="badge @WebhookConsole.StatusBadge(endpoint.Status)">@T[endpoint.Status]</span></td>
+                        <td>@(endpoint.EventTypes.Count == 0 ? T["All"] : string.Join(", ", endpoint.EventTypes))</td>
+                        <td><a href="/webhooks/@endpoint.Id">@T["Open"]</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (Model.CanWrite)
+{
+<div class="card form-panel">
+    <h2 id="webhook-create">@T["Añadir conexión"]</h2>
+    <form method="post" asp-page-handler="Create" class="stack">
+        <p>
+            <label asp-for="Description">@T["Nombre de la conexión"]</label>
+            <input asp-for="Description" required placeholder="@T["Agent wake-up"]" />
+        </p>
+        <p>
+            <label asp-for="EndpointUrl">@T["URL que recibirá los eventos"]</label>
+            <input asp-for="EndpointUrl" type="url" required placeholder="https://example.com/deleguard/webhooks" />
+            <span class="hint">@T["Usa una dirección pública HTTPS. Tu servicio debe comprobar la firma de los eventos."]</span>
+        </p>
+        <p>
+            <strong>@T["Eventos que recibirás"]</strong>
+            <span class="hint">@T["Por defecto recibirás todos. Abre las opciones si solo necesitas algunos."]</span>
+        </p>
+        <details class="advanced-options"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Elegir eventos específicos"]</summary><div class="stack">
+            @foreach (var type in Model.Catalog)
+            {
+                <label class="check-row">
+                    <input type="checkbox" name="SelectedEventTypes" value="@type" />
+                    <code>@type</code>
+                </label>
+            }
+        </div>
+        </details><button type="submit">@T["Crear conexión"]</button>
+    </form>
+</div>
+}

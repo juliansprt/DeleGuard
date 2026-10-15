@@ -1,0 +1,10 @@
+ide,os,architecture,package_version,package_sha256,signature_identity,ide_version,os_version,clean_install,update,reinstall,disconnect,multi_project,multi_account,allow,deny,approval,expiry,changed_arguments,revocation,server_outage,restart,evidence_path,status
+Cursor,Windows,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+VS Code/Copilot,Windows,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+Claude Code,Windows,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+Cursor,Linux,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+VS Code/Copilot,Linux,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+Claude Code,Linux,x64,,,,,,,,,,,,,,,,,,,,,PENDING
+Cursor,macOS,ARM64,,,,,,,,,,,,,,,,,,,,,PENDING
+VS Code/Copilot,macOS,ARM64,,,,,,,,,,,,,,,,,,,,,PENDING
+Claude Code,macOS,ARM64,,,,,,,,,,,,,,,,,,,,,PENDING

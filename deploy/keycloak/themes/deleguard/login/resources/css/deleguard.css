@@ -1,0 +1,207 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+html.login-pf,
+html.login-pf body,
+.login-pf body {
+  min-height: 100%;
+  background: #F4F8FC !important;
+  background-image: none !important;
+  color: #051B3D;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.login-pf body::before,
+.login-pf #kc-header-wrapper img,
+.login-pf .login-pf-brand {
+  display: none !important;
+}
+
+.login-pf-page {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: #F4F8FC !important;
+  background-image: none !important;
+}
+
+#kc-header {
+  margin: 0 0 1rem !important;
+  background: none !important;
+}
+
+#kc-header-wrapper {
+  font-size: 1.12rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.04em;
+  color: #051B3D !important;
+  text-transform: none !important;
+  background: none !important;
+  padding: 0 !important;
+}
+
+.dg-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #051B3D !important;
+  text-transform: none !important;
+  font-weight: 700;
+}
+
+.dg-mark {
+  width: 32px;
+  height: 36px;
+  background: url("../img/brand-mark.png") center / contain no-repeat;
+  color: transparent;
+  font-size: 0;
+  border-radius: 0;
+  display: inline-block;
+  text-transform: none;
+}
+
+.card-pf {
+  width: min(420px, 100%) !important;
+  max-width: 420px;
+  background: #fff !important;
+  border: 1px solid #D7E4F4 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 5px rgba(5, 27, 61, 0.05), 0 1px 2px rgba(5, 27, 61, 0.04) !important;
+  padding: 2rem 1.75rem 1.5rem !important;
+  margin: 0 auto !important;
+  float: none !important;
+  border-top: 1px solid #D7E4F4 !important;
+}
+
+#kc-page-title {
+  font-size: 1.65rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  color: #051B3D !important;
+  text-align: left !important;
+  margin: 0 0 1rem !important;
+}
+
+.form-group {
+  margin: 0 0 0.85rem !important;
+}
+
+label,
+.pf-c-form__label-text {
+  display: block;
+  color: #3D5473 !important;
+  margin-bottom: 0.3rem;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+}
+
+.pf-c-form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 0.6rem 0.7rem !important;
+  border-radius: 8px !important;
+  border: 1px solid #D7E4F4 !important;
+  background: #fff !important;
+  color: #051B3D !important;
+  font: inherit !important;
+  height: auto !important;
+}
+
+input:focus,
+.pf-c-form-control:focus {
+  outline: none !important;
+  border-color: #0B5CFF !important;
+  box-shadow: 0 0 0 3px #E8F2FF !important;
+}
+
+#kc-form-buttons input,
+#kc-form-buttons button,
+.pf-c-button.pf-m-primary {
+  background: #0B5CFF !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  padding: 0.55rem 0.95rem !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+  font-size: 0.9rem !important;
+  cursor: pointer;
+  width: 100%;
+  background-image: none !important;
+}
+
+#kc-form-buttons input:hover,
+.pf-c-button.pf-m-primary:hover {
+  background: #0A2D6B !important;
+}
+
+#kc-social-providers h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #3D5473;
+  text-align: center;
+}
+
+#kc-social-providers ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+#kc-social-providers a {
+  background: transparent !important;
+  color: #051B3D !important;
+  border: 1px solid #D7E4F4 !important;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+#kc-info-wrapper,
+#kc-registration,
+.login-pf-signup {
+  text-align: center;
+  color: #3D5473;
+  font-size: 0.9rem;
+  background: transparent !important;
+}
+
+a {
+  color: #0B5CFF !important;
+}
+
+.alert-error,
+.pf-m-danger {
+  background: #fde8ec !important;
+  color: #c41c3b !important;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+#kc-register-form .form-group:has(#lastName) {
+  display: none;
+}
+
+.checkbox label {
+  font-weight: 500;
+  color: #3D5473;
+}
+
+.login-pf-settings {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}

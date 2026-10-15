@@ -1,0 +1,12 @@
+@model IReadOnlyList<Deleguard.Application.Abstractions.CoverageRow>
+<div class="card table-wrap"><table class="data"><caption class="sr-only">@T["Agent action policy coverage"]</caption>
+<thead><tr><th>@T["Agent"]</th><th>@T["Action / resource"]</th><th>@T["Assigned policies"]</th><th>@T["Configuration"]</th></tr></thead><tbody>
+@foreach (var row in Model)
+{
+    <tr><td>@if (row.AgentId is not null) { <a href="/agents/@row.AgentId">@row.AgentName</a> } else { @row.AgentName }</td>
+    <td><a href="/actions?q=@Uri.EscapeDataString(row.Action)">@row.Action</a><div class="muted">@row.ResourceType</div></td>
+    <td>@foreach (var policy in row.Policies) { <div><a href="/policies/@policy.Id">@policy.Slug · v@(policy.Version)</a></div> }
+    @if (row.Policies.Count == 0) { <span class="muted">@T["None"]</span> }</td>
+    <td><span class="badge @(row.Status == "Ready to evaluate" ? "neutral" : "wait")">@T[row.Status]</span></td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p>@T["No actions in this selection."] <a href="/actions">@T["Open actions"]</a>.</p> }</div>

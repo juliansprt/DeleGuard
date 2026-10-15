@@ -1,0 +1,89 @@
+---
+title: ".NET"
+description: Minimal C# client for POST /v1/authorize against local Deleguard.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The repo example is `examples/dotnet/AuthorizeDemo.cs` (`HttpClient` + `System.Net.Http.Json`). JSON at the boundary is snake_case: Deleguard’s ASP.NET stack already expects it; if you serialize by hand, use `JsonNamingPolicy.SnakeCaseLower`.
+
+The **LLM → tool → authorize** loop in Semantic Kernel is in [Integrate with an LLM](/en/integrate/with-llm/).
+
+```csharp
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+
+var baseUrl = Environment.GetEnvironmentVariable("DELEGUARD_URL") ?? "http://127.0.0.1:5080";
+var token = Environment.GetEnvironmentVariable("DELEGUARD_TOKEN")
+            ?? "dgk_demo_invoice_agent_local_dev_only";
+
+using var http = new HttpClient { BaseAddress = new Uri(baseUrl) };
+http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+async Task<JsonElement> AuthorizeAsync(string id, string status, long amount, bool reported)
+{
+    using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/authorize")
+    {
+        Content = JsonContent.Create(new
+        {
+            agent = new { id = "invoice-agent", environment = "production" },
+            actor = new { id = "usr_481", type = "human" },
+            action = "invoice.cancel",
+            resource = new
+            {
+                type = "invoice",
+                id,
+                attributes = new { amount, currency = "COP", status, reportedToTaxAuthority = reported }
+            },
+            context = new { reason = "demo" }
+        })
+    };
+    request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+    using var response = await http.SendAsync(request);
+    var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+    return json;
+}
+```
+
+## Reusable wrapper
+
+```csharp
+public sealed class DeleguardClient(HttpClient http)
+{
+    public async Task<AuthorizeResult> AuthorizeAsync(
+        string action, string resourceType, string resourceId,
+        object attributes, string agentId, string environment,
+        CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/authorize")
+        {
+            Content = JsonContent.Create(new
+            {
+                agent = new { id = agentId, environment },
+                actor = new { id = "usr_481", type = "human" },
+                action,
+                resource = new { type = resourceType, id = resourceId, attributes },
+                context = new { reason = "agent-tool" }
+            })
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        using var response = await http.SendAsync(request, ct);
+        if ((int)response.StatusCode >= 500)
+            throw new DeleguardUnavailableException();
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AuthorizeResult>(ct))!;
+    }
+}
+
+public sealed record AuthorizeResult(
+    string Decision,
+    string DecisionId,
+    string? Reason,
+    string? Permit,
+    string? ApprovalId);
+```
+
+<Aside type="note">
+Configure `HttpClient` with `BaseAddress` and `Authorization` once (e.g. in DI). Do not put the console cookie/token on this client.
+</Aside>

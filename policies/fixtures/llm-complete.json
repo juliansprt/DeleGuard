@@ -1,0 +1,77 @@
+[
+  {
+    "name": "cheap-catalog-allow",
+    "expected": "ALLOW",
+    "request": {
+      "action": "llm.complete",
+      "resource_type": "model",
+      "resource_id": "chat.cheap",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "cheap",
+        "estimated_cost_usd": 0.002,
+        "over_budget": false
+      }
+    }
+  },
+  {
+    "name": "expensive-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "llm.complete",
+      "resource_type": "model",
+      "resource_id": "chat.strong",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "strong",
+        "estimated_cost_usd": 2.5,
+        "over_budget": false
+      }
+    }
+  },
+  {
+    "name": "unknown-model-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.complete",
+      "resource_type": "model",
+      "resource_id": "gpt-secret",
+      "attributes": {
+        "in_catalog": false,
+        "model_tier": "cheap",
+        "estimated_cost_usd": 0.01,
+        "over_budget": false
+      }
+    }
+  },
+  {
+    "name": "over-budget-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.complete",
+      "resource_type": "model",
+      "resource_id": "chat.cheap",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "cheap",
+        "estimated_cost_usd": 0.01,
+        "over_budget": true
+      }
+    }
+  },
+  {
+    "name": "unknown-tier-fallback-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.complete",
+      "resource_type": "model",
+      "resource_id": "chat.frontier",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "frontier",
+        "estimated_cost_usd": 0.01,
+        "over_budget": false
+      }
+    }
+  }
+]

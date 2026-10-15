@@ -1,0 +1,205 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: deleguard
+      POSTGRES_PASSWORD: deleguard
+      POSTGRES_DB: deleguard
+    volumes:
+      - deleguard_pg:/var/lib/postgresql/data
+      - ./postgres/init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deleguard -d deleguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+  docs:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.docs
+    ports:
+      - "4321:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+      start_period: 5s
+
+  keycloak-db-init:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: deleguard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        until pg_isready -h postgres -U deleguard; do sleep 1; done
+        psql -h postgres -U deleguard -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1 \
+          || psql -h postgres -U deleguard -d postgres -c "CREATE DATABASE keycloak"
+    restart: "no"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: deleguard-dev-keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: deleguard-dev-keycloak
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: deleguard
+      KC_DB_PASSWORD: deleguard
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_PORT: "9000"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-DeleguardPlatform!23}
+    volumes:
+      - ./keycloak/deleguard-realm.json:/opt/keycloak/data/import/deleguard-realm.json:ro
+      - ./keycloak/themes/deleguard:/opt/keycloak/themes/deleguard:ro
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak-db-init:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q \"HTTP/1.1 200\" <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  keycloak-configure:
+    image: quay.io/keycloak/keycloak:26.3
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - cp /opt/keycloak/configure.sh /tmp/configure.sh && sed -i 's/\r$//' /tmp/configure.sh && bash /tmp/configure.sh
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_ORIGIN: http://localhost:8081
+      DELEGUARD_PUBLIC_ORIGIN: http://localhost:8082
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: deleguard-dev-keycloak
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
+      PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-DeleguardPlatform!23}
+    volumes:
+      - ./keycloak/configure.sh:/opt/keycloak/configure.sh:ro
+      - ./keycloak/user-profile.json:/opt/keycloak/user-profile.json:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      DELEGUARD_ENTRYPOINT: api
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=deleguard;Username=deleguard;Password=deleguard
+      Redis__ConnectionString: redis:6379
+      Permits__SigningKey: deleguard-dev-permit-hmac-key-change-in-prod-32
+      DemoAuth__ApiKeyPepper: deleguard-dev-pepper
+      DemoAuth__ConsoleToken: dgc_demo_console_local_dev_only
+      DemoAuth__DemoOrganizationId: org_demo
+      DemoAuth__AllowEmergencyConsoleToken: "true"
+      Oidc__Enabled: "true"
+      Oidc__Authority: http://localhost:8081/realms/deleguard
+      Oidc__BackchannelAuthority: http://keycloak:8080
+      Oidc__ClientId: deleguard-console
+      Oidc__ClientSecret: deleguard-console-dev-secret-change-me
+      Oidc__GoogleEnabled: ${OIDC_GOOGLE_ENABLED:-false}
+      Oidc__MicrosoftEnabled: ${OIDC_MICROSOFT_ENABLED:-false}
+      Oidc__RequireVerifiedEmail: "false"
+      Oidc__KeycloakAdminUrl: http://localhost:8081/admin
+      Docs__PublicUrl: http://localhost:4321
+      DataProtection__KeyPath: /app/keys
+      Webhooks__AllowLoopback: "true"
+      Webhooks__AllowInsecureHttp: "true"
+    volumes:
+      - deleguard_dpkeys:/app/keys
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      keycloak-configure:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      DELEGUARD_ENTRYPOINT: worker
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=deleguard;Username=deleguard;Password=deleguard
+      Permits__SigningKey: deleguard-dev-permit-hmac-key-change-in-prod-32
+      DemoAuth__ApiKeyPepper: deleguard-dev-pepper
+      Webhooks__AllowLoopback: "true"
+      Webhooks__AllowInsecureHttp: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  webhook-relay:
+    image: alpine/socat:1.8.0.1
+    network_mode: "service:worker"
+    command: TCP-LISTEN:4020,bind=127.0.0.1,fork,reuseaddr TCP:host.docker.internal:4020
+    depends_on:
+      - worker
+
+volumes:
+  deleguard_pg:
+  deleguard_dpkeys:

@@ -1,0 +1,40 @@
+---
+title: Approvals
+description: Cola de revisión humana de hechos canónicos, detalle de una solicitud, Approve once y Deny.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Approvals** (`/approvals`) es el menú **Work**. Aquí un humano decide sobre una acción que la política marcó `REQUIRE_APPROVAL`. La prosa del agente **nunca** se muestra: solo hechos canónicos.
+
+## Cola
+
+Si no hay nada pendiente:
+
+![Approvals vacío: You’re all caught up, enlace Open Playground](/console/approvals.png)
+
+**Open Playground** genera un caso real: autoriza un `invoice.cancel` de alto importe (chip **High**) y la tarjeta aparece aquí con badge **Needs approval**.
+
+Cuando hay ítems, cada tarjeta muestra headline, caducidad y un extracto de hechos. Clic abre `/approvals/{id}`.
+
+## Detalle
+
+![Detalle invoice.cancel · FAC-HIGH con hechos canónicos Agent, Action, Amount, Resource](/console/approval-detail.png)
+
+<Steps>
+
+1. Lee los hechos: Agent, Action, Amount, Resource, Environment, Status, Type, Actor, Policy, Expires.
+2. Si el estado es **Pending**, elige:
+   - **Approve once** — emite un permit de corta vida. El agente puede ejecutar **esa** acción, no un cheque en blanco.
+   - **Deny** — confirma; el agente recibe DENY.
+3. **Technical details** expone `decision_id`, `approval_id` y el JSON de hechos.
+
+</Steps>
+
+La captura de arriba muestra una solicitud **Expired**: los botones desaparecen cuando el worker (o el reloj) cierra la ventana. Vuelve a autorizar desde Playground o el agente para crear una nueva.
+
+<Aside type="caution" title="Approve once">
+No hay “approve until Friday” en el MVP. Una aprobación = un permit acotado. Si el recurso cambia de forma material (TOCTOU), hay que volver a authorize.
+</Aside>
+
+API equivalente (token de consola, no de agente): `POST /v1/approvals/{id}/approve` y `/deny`.

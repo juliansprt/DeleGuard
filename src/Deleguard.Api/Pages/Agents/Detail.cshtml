@@ -1,0 +1,11 @@
+@page "/agents/{id}"
+@model Deleguard.Api.Pages.Agents.DetailModel
+@{ ViewData["Title"] = Model.Agent.DisplayName; ViewData["Nav"] = "agents"; }
+<p class="crumbs"><a href="/agents">@T["Agents"]</a> / @Model.Agent.DisplayName</p>
+<header class="page-header"><div><h1>@Model.Agent.DisplayName</h1><p class="lede">@Model.Agent.ExternalId · @Model.Agent.EnvironmentName</p></div><span class="badge @(Model.Agent.Enabled ? "neutral" : "wait")">@(Model.Agent.Enabled ? T["Enabled"] : T["Disabled"])</span></header>
+<div class="card"><dl class="facts"><dt>@T["Environment"]</dt><dd>@Model.Agent.EnvironmentName</dd>
+@if (Model.CanSeeActivity) { <dt>@T["Last decision"]</dt><dd>@(Model.Activity.Items.FirstOrDefault()?.CreatedAt.ToString("u") ?? T["No activity yet"])</dd> }
+@if (Model.CanSeeSpend) { <dt>@T["Gateway spend · this month (UTC)"]</dt><dd>@Model.Spend.ToString("0.####") @T["USD · settled usage"]</dd> }</dl>
+@if (HttpContext.GetConsoleUser()?.HasPermission("agents.write") == true) { <p><a class="button" href="/playground?AgentId=@Model.Agent.Id">@T["Test this agent"]</a> <a href="/agents/connect?AgentId=@Model.Agent.Id">@T["Connection guide"]</a></p> }</div>
+@if (Model.CanSeeCoverage) { <h2>@T["Actions and policies"]</h2><partial name="_Coverage" model="Model.Coverage" /> }
+@if (Model.CanSeeActivity) { <h2>@T["Recent decisions"]</h2><partial name="_DecisionActivity" model="Model.Activity.Items" /><a href="/audit/activity?AgentId=@Model.Agent.Id">@T["All activity for this agent"]</a> }

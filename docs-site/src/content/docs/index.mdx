@@ -1,0 +1,55 @@
+---
+title: Deleguard
+description: Autorización determinista, aprobación humana y evidencia para acciones de agentes de IA.
+template: splash
+hero:
+  tagline: Siéntate delante de cada acción sensible del agente. El modelo nunca decide.
+  actions:
+    - text: Empezar en 5 minutos
+      link: /start/quickstart/
+      icon: rocket
+    - text: Integrar con un LLM
+      link: /integrate/with-llm/
+      icon: puzzle
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+```text
+agente → POST /v1/authorize → ALLOW | DENY | REQUIRE_APPROVAL
+                            → aprobación → permit → evidencia → audit
+```
+
+<CardGrid stagger>
+	<Card title="Configurar el entorno" icon="setting">
+		.NET 10, Postgres, Redis y las claves demo para levantar la API y la consola en local.
+		<br />
+		<a href="/start/environment/">Guía de entorno →</a>
+	</Card>
+	<Card title="Integrar el agente" icon="forward-slash">
+		Si usas un LLM: el modelo pide la tool, **tu código** llama authorize, y solo entonces ejecutas.
+		<br />
+		<a href="/integrate/with-llm/">Guía con OpenAI / Claude →</a>
+	</Card>
+	<Card title="Usar la consola" icon="laptop">
+		Login, Approvals, Playground, Agents, Actions, Policies y Audit — con capturas reales.
+		<br />
+		<a href="/console/login/">Manual de la consola →</a>
+	</Card>
+	<Card title="Contrato HTTP" icon="document">
+		OpenAPI, decisiones, YAML de políticas y APIs de administración.
+		<br />
+		<a href="/reference/decisions/">Referencia →</a>
+	</Card>
+</CardGrid>
+
+## Tres decisiones, un contrato
+
+| Decisión | Qué hace el agente |
+| --- | --- |
+| `ALLOW` | Ejecuta la acción. Conserva `decision_id` y el `permit`. |
+| `DENY` | No ejecuta. HTTP **200** con `decision=DENY` — no es un error de red. |
+| `REQUIRE_APPROVAL` | Espera. Un humano aprueba en la consola y entonces aparece un permit. |
+
+La demo `invoice.cancel` cubre las tres: borrador barato → ALLOW; emitida de alto valor → REQUIRE_APPROVAL; reportada a Hacienda → DENY.

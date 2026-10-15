@@ -1,0 +1,12 @@
+# Deny-by-default template: network egress needs a purpose-built allow policy.
+id: "ide-network-connect"
+version: 1
+priority: 100
+match:
+  action: "network.connect"
+  resource_type: "network"
+rules:
+  - name: "deny-network-egress"
+    effect: "DENY"
+    reason: "IDE network connections require an administrator-authored allow policy."
+fallback: "DENY"

@@ -1,0 +1,629 @@
+[
+  {
+    "name": "admin-user-list-allow-auditor",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.user.list",
+      "resource_type": "user",
+      "resource_id": "directory"
+    }
+  },
+  {
+    "name": "admin-user-list-deny-without-roles",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": [],
+    "request": {
+      "action": "admin.user.list",
+      "resource_type": "user",
+      "resource_id": "directory"
+    }
+  },
+  {
+    "name": "admin-user-create-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.user.create",
+      "resource_type": "user",
+      "resource_id": "operator@example.com"
+    }
+  },
+  {
+    "name": "admin-user-create-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.user.create",
+      "resource_type": "user",
+      "resource_id": "operator@example.com"
+    }
+  },
+  {
+    "name": "admin-user-create-deny-foreign-agent",
+    "expected": "DENY",
+    "agent_id": "invoice-agent",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.user.create",
+      "resource_type": "user",
+      "resource_id": "operator@example.com"
+    }
+  },
+  {
+    "name": "admin-user-create-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.user.create",
+      "resource_type": "user",
+      "resource_id": "operator@example.com"
+    }
+  },
+  {
+    "name": "admin-user-create-deny-billing-manager",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["billing-manager"],
+    "request": {
+      "action": "admin.user.create",
+      "resource_type": "user",
+      "resource_id": "operator@example.com"
+    }
+  },
+  {
+    "name": "admin-agent-create-allow-operator",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.agent.create",
+      "resource_type": "agent",
+      "resource_id": "new-agent"
+    }
+  },
+  {
+    "name": "admin-agent-create-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.agent.create",
+      "resource_type": "agent",
+      "resource_id": "new-agent"
+    }
+  },
+  {
+    "name": "admin-agent-rotate-key-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.agent.rotate_key",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-disable-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.agent.disable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-disable-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.agent.disable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-disable-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.agent.disable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-enable-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.agent.enable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-enable-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.agent.enable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-agent-enable-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.agent.enable",
+      "resource_type": "agent",
+      "resource_id": "agt_invoice"
+    }
+  },
+  {
+    "name": "admin-environment-list-allow-auditor",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.environment.list",
+      "resource_type": "environment",
+      "resource_id": "directory"
+    }
+  },
+  {
+    "name": "admin-environment-get-allow-auditor",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.environment.get",
+      "resource_type": "environment",
+      "resource_id": "env_demo_production"
+    }
+  },
+  {
+    "name": "admin-environment-get-deny-without-roles",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": [],
+    "request": {
+      "action": "admin.environment.get",
+      "resource_type": "environment",
+      "resource_id": "env_demo_production"
+    }
+  },
+  {
+    "name": "admin-environment-get-deny-foreign-agent",
+    "expected": "DENY",
+    "agent_id": "invoice-agent",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.environment.get",
+      "resource_type": "environment",
+      "resource_id": "env_demo_production"
+    }
+  },
+  {
+    "name": "admin-docs-list-allow-auditor",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.docs.list",
+      "resource_type": "doc",
+      "resource_id": "catalog"
+    }
+  },
+  {
+    "name": "admin-docs-list-deny-without-roles",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": [],
+    "request": {
+      "action": "admin.docs.list",
+      "resource_type": "doc",
+      "resource_id": "catalog"
+    }
+  },
+  {
+    "name": "admin-docs-get-allow-operator",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.docs.get",
+      "resource_type": "doc",
+      "resource_id": "environment-setup"
+    }
+  },
+  {
+    "name": "admin-docs-get-deny-foreign-agent",
+    "expected": "DENY",
+    "agent_id": "invoice-agent",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.docs.get",
+      "resource_type": "doc",
+      "resource_id": "environment-setup"
+    }
+  },
+  {
+    "name": "admin-environment-create-allow-operator",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.environment.create",
+      "resource_type": "environment",
+      "resource_id": "staging"
+    }
+  },
+  {
+    "name": "admin-environment-create-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.environment.create",
+      "resource_type": "environment",
+      "resource_id": "staging"
+    }
+  },
+  {
+    "name": "admin-environment-update-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.environment.update",
+      "resource_type": "environment",
+      "resource_id": "env_demo_production"
+    }
+  },
+  {
+    "name": "admin-environment-delete-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.environment.delete",
+      "resource_type": "environment",
+      "resource_id": "env_staging"
+    }
+  },
+  {
+    "name": "admin-environment-delete-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.environment.delete",
+      "resource_type": "environment",
+      "resource_id": "env_staging"
+    }
+  },
+  {
+    "name": "admin-environment-delete-deny-foreign-agent",
+    "expected": "DENY",
+    "agent_id": "invoice-agent",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.environment.delete",
+      "resource_type": "environment",
+      "resource_id": "env_staging"
+    }
+  },
+  {
+    "name": "admin-environment-delete-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.environment.delete",
+      "resource_type": "environment",
+      "resource_id": "env_staging"
+    }
+  },
+  {
+    "name": "admin-policy-create-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.policy.create",
+      "resource_type": "policy",
+      "resource_id": "policy"
+    }
+  },
+  {
+    "name": "admin-policy-create-allow-operator",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.policy.create",
+      "resource_type": "policy",
+      "resource_id": "policy"
+    }
+  },
+  {
+    "name": "admin-policy-create-deny-auditor",
+    "expected": "DENY",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["auditor"],
+    "request": {
+      "action": "admin.policy.create",
+      "resource_type": "policy",
+      "resource_id": "policy"
+    }
+  },
+  {
+    "name": "admin-policy-create-deny-foreign-agent",
+    "expected": "DENY",
+    "agent_id": "invoice-agent",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.policy.create",
+      "resource_type": "policy",
+      "resource_id": "policy"
+    }
+  },
+  {
+    "name": "admin-policy-publish-allow-org-admin",
+    "expected": "ALLOW",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["org-admin"],
+    "request": {
+      "action": "admin.policy.publish",
+      "resource_type": "policy",
+      "resource_id": "pol_invoice"
+    }
+  },
+  {
+    "name": "admin-policy-publish-operator-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "agent_id": "admin-mcp",
+    "actor_roles": ["operator"],
+    "request": {
+      "action": "admin.policy.publish",
+      "resource_type": "policy",
+      "resource_id": "pol_invoice"
+    }
+  },
+    {
+        "name": "admin-mcp-set-tools-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.mcp.set_tools",
+          "resource_type": "mcp",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-status-allow-auditor",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.gateway.status",
+          "resource_type": "gateway",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-update-settings-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.gateway.update_settings",
+          "resource_type": "gateway",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-status-deny-without-roles",
+        "expected": "DENY",
+        "agent_id": "admin-mcp",
+        "actor_roles": [],
+        "request": {
+          "action": "admin.gateway.status",
+          "resource_type": "gateway",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-update-settings-allow-org-admin",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["org-admin"],
+        "request": {
+          "action": "admin.gateway.update_settings",
+          "resource_type": "gateway",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-update-settings-deny-auditor",
+        "expected": "DENY",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.gateway.update_settings",
+          "resource_type": "gateway",
+          "resource_id": "settings"
+        }
+      },
+      {
+        "name": "admin-gateway-upsert-route-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.gateway.upsert_route",
+          "resource_type": "gateway",
+          "resource_id": "chat.lab"
+        }
+      },
+      {
+        "name": "admin-gateway-upsert-route-allow-org-admin",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["org-admin"],
+        "request": {
+          "action": "admin.gateway.upsert_route",
+          "resource_type": "gateway",
+          "resource_id": "chat.lab"
+        }
+      },
+      {
+        "name": "admin-gateway-delete-route-deny-auditor",
+        "expected": "DENY",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.gateway.delete_route",
+          "resource_type": "gateway",
+          "resource_id": "rte_1"
+        }
+      },
+      {
+        "name": "admin-webhook-list-allow-auditor",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.webhook.list",
+          "resource_type": "webhook",
+          "resource_id": "directory"
+        }
+      },
+      {
+        "name": "admin-webhook-create-allow-operator",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.webhook.create",
+          "resource_type": "webhook",
+          "resource_id": "https://example.com/hooks"
+        }
+      },
+      {
+        "name": "admin-webhook-create-deny-auditor",
+        "expected": "DENY",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.webhook.create",
+          "resource_type": "webhook",
+          "resource_id": "https://example.com/hooks"
+        }
+      },
+      {
+        "name": "admin-webhook-update-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.webhook.update",
+          "resource_type": "webhook",
+          "resource_id": "whk_demo"
+        }
+      },
+      {
+        "name": "admin-webhook-rotate-secret-allow-org-admin",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["org-admin"],
+        "request": {
+          "action": "admin.webhook.rotate_secret",
+          "resource_type": "webhook",
+          "resource_id": "whk_demo"
+        }
+      },
+      {
+        "name": "admin-webhook-rotate-secret-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.webhook.rotate_secret",
+          "resource_type": "webhook",
+          "resource_id": "whk_demo"
+        }
+      },
+      {
+        "name": "admin-webhook-rotate-secret-deny-auditor",
+        "expected": "DENY",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["auditor"],
+        "request": {
+          "action": "admin.webhook.rotate_secret",
+          "resource_type": "webhook",
+          "resource_id": "whk_demo"
+        }
+      },
+      {
+        "name": "admin-webhook-rotate-secret-deny-foreign-agent",
+        "expected": "DENY",
+        "agent_id": "invoice-agent",
+        "actor_roles": ["org-admin"],
+        "request": {
+          "action": "admin.webhook.rotate_secret",
+          "resource_type": "webhook",
+          "resource_id": "whk_demo"
+        }
+      },
+      {
+        "name": "admin-action-update-allow-operator",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.action.update",
+          "resource_type": "action",
+          "resource_id": "act_email"
+        }
+      },
+      {
+        "name": "admin-action-delete-operator-approval",
+        "expected": "REQUIRE_APPROVAL",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["operator"],
+        "request": {
+          "action": "admin.action.delete",
+          "resource_type": "action",
+          "resource_id": "act_email"
+        }
+      },
+      {
+        "name": "admin-policy-delete-allow-org-admin",
+        "expected": "ALLOW",
+        "agent_id": "admin-mcp",
+        "actor_roles": ["org-admin"],
+        "request": {
+          "action": "admin.policy.delete",
+          "resource_type": "policy",
+          "resource_id": "pol_invoice"
+        }
+      }
+    ]

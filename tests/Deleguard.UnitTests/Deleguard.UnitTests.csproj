@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+    <ItemGroup>
+    <ProjectReference Include="..\..\src\Deleguard.Domain\Deleguard.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Deleguard.Policy\Deleguard.Policy.csproj" />
+    <ProjectReference Include="..\..\src\Deleguard.Application\Deleguard.Application.csproj" />
+    <ProjectReference Include="..\..\src\Deleguard.McpGuard\Deleguard.McpGuard.csproj" />
+    <ProjectReference Include="..\..\src\Deleguard.AiGateway\Deleguard.AiGateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\policies\**\*" CopyToOutputDirectory="PreserveNewest" Link="policies\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

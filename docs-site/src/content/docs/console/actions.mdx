@@ -1,0 +1,40 @@
+---
+title: Actions
+description: Declarar operaciones con nombre estable y riesgo. Registrar no autoriza; las acciones desconocidas se deniegan.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Actions** (`/actions`) declara qué puede *intentar* un agente. El motor no adivina nombres: si `action` no existe, el resultado es DENY `"Unknown action."`. Registrar el nombre **no** autoriza: sin política publicada, authorize sigue en DENY (`"No applicable policy."`).
+
+La consola separa dos catálogos:
+
+- **Protected** — operaciones de producto (`invoice.cancel`, `email.send`, …).
+- **Administration** — nombres `admin.*` ligados al agente `admin-mcp`. Un agente de producto no puede llamarlos.
+
+![Registered actions con invoice.cancel HIGH y formulario Add action](/console/actions.png)
+
+<Steps>
+
+1. **Name** — debe coincidir carácter a carácter con lo que envía el agente (`invoice.cancel`). Minúsculas; sin espacios ni lookalikes Unicode.
+2. **Resource type** — `invoice`, `payment`, … Debe alinear con `match.resource_type` de la política.
+3. **Risk** — metadato de catálogo, no un switch del PDP. `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`. La política publicada decide ALLOW / DENY / REQUIRE_APPROVAL. HIGH y CRITICAL *suelen* ir a aprobación en el YAML.
+4. **Create action**, luego **Create policy** (el banner lo enlaza). Desde ahí, **Open Playground** prueba authorize con esa action.
+
+</Steps>
+
+No hay edición ni borrado en el MVP: elige bien el nombre. Una política publicada contra `invoice.cancel` no matcheará `Invoice.Cancel`.
+
+La columna **Policy** muestra Published, Draft o **No policy**. Sin política publicada, el nombre existe pero authorize deniega.
+
+Los bindings **Guard MCP** mapean un `mcp_server` + `mcp_tool` downstream a esta acción. El cliente corre `src/Deleguard.McpGuard`; Cursor no debe registrar también el MCP downstream. Ver [Guard MCP](/integrate/mcp-guard/).
+
+<Aside type="tip">
+Registra la acción **antes** de publicar la política y **antes** de que el agente llame authorize. El checklist de Overview solo cuenta acciones de producto (ignora `admin.*`).
+</Aside>
+
+## Cobertura
+
+**View agent → action → policy coverage** abre la matriz de asignaciones y configuración pendiente. Ready to evaluate indica que existe la asignación; la solicitud aún debe pasar la política.
+
+![Cobertura](/console/coverage.png)

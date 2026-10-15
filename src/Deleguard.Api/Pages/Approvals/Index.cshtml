@@ -1,0 +1,39 @@
+@page "/approvals"
+@model Deleguard.Api.Pages.Approvals.IndexModel
+@{
+    ViewData["Title"] = "Aprobaciones";
+    ViewData["Nav"] = "approvals";
+}
+
+<partial name="_PageHeader" model='("Aprobaciones", "Revisa las operaciones pendientes y decide cuáles pueden continuar.")' />
+<form method="get" class="card row"><div><label asp-for="Q">@T["Search requests"]</label><input asp-for="Q" type="search" maxlength="200" placeholder="@T["Agent, action, resource or reason"]" /></div><label class="check-row"><input asp-for="Expiring" /><span>@T["Expiring in 15 minutes"]</span></label><button class="ghost">@T["Apply filters"]</button><a href="/approvals">@T["Clear filters"]</a></form>
+<div class="row"><p role="status">@Model.Items.Count / @Model.Total @T["pending requests"]</p><a href="@HttpContext.Request.Path@HttpContext.Request.QueryString">@T["Refresh pending requests"]</a></div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="card">
+        @if(Model.Total>0){<p>@T["No requests match these filters."]</p><a href="/approvals">@T["Clear filters"]</a>}
+        else{<partial name="_EmptyState" model='new EmptyStateModel("No hay solicitudes pendientes", "Cuando una política pida revisión, verás aquí la operación, el agente y su alcance.", "/start#how-it-works", "Entender las decisiones")' />}
+    </div>
+}
+else
+{
+    @foreach (var item in Model.Items)
+    {
+        var facts = CanonicalFactsView.Parse(item.CanonicalFactsJson);
+        <a class="card interactive queue-item" href="/approvals/@item.Id">
+            <div class="queue-kicker">
+                <span class="badge wait">@T["Requiere aprobación"]</span>
+                <span class="muted">@ConsoleFormatting.RelativeExpiry(item.ExpiresAt, DateTimeOffset.UtcNow)</span>
+            </div>
+            <div class="queue-title">@facts.Headline</div>
+            <dl class="facts" style="margin-top:0.75rem">
+                @foreach (var row in facts.Rows.Take(5))
+                {
+                    <dt>@T[row.Label]</dt>
+                    <dd>@row.Value</dd>
+                }
+            </dl>
+        </a>
+    }
+}

@@ -1,0 +1,16 @@
+---
+title: Permits y evidencia
+description: Qué prueba un permit, cuándo reportar una ejecución y por qué “el agente dijo done” no cuenta.
+---
+
+Un **permit** es un token HMAC (issuer + signing key) que ata la decisión a un recurso y una ventana de tiempo. ALLOW y Approve once lo emiten. DENY no.
+
+**Evidencia** es `POST /v1/executions` con `decision_id` y `status`. Idealmente incluye un ancla del sistema de confianza: id de transacción del ERP, hash de commit, id de webhook firmado — no un chat del modelo diciendo “ya está”.
+
+Ciclo de vida:
+
+```text
+REQUESTED → DECIDED → APPROVAL_PENDING? → PERMITTED → EXECUTION_REPORTED
+```
+
+Si el recurso cambia entre decisión y ejecución (importe, estado fiscal), vuelve a authorize. Eso es control TOCTOU: el permit no es un cheque al portador.

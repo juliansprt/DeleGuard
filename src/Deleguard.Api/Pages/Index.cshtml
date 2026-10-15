@@ -1,0 +1,67 @@
+@page
+@model Deleguard.Api.Pages.IndexModel
+@{
+    if (!Model.IsSignedIn)
+    {
+        Layout = "_LandingLayout";
+        ViewData["Title"] = "Control every agent action.";
+    }
+    else
+    {
+        ViewData["Title"] = "Resumen";
+        ViewData["Nav"] = "overview";
+    }
+}
+
+@if (!Model.IsSignedIn)
+{
+    <section class="landing-hero">
+        <p class="landing-kicker">@T["Agents · Actions · Policies"]</p>
+        <h1>@T["Control every agent action."]</h1>
+        <p class="lede">@T["Control what each agent can do through /v1/authorize, with deterministic policies, human approval, and reported execution results. AI Gateway is an optional integration for model calls."]</p>
+        <div class="landing-cta">
+            <a class="button" href="/login">@T["Sign in"]</a>
+            <a class="button ghost" href="/login?register=1">@T["Create an account"]</a>
+        </div>
+    </section>
+    <section class="landing-grid">
+        <article class="card">
+            <h2>@T["Register the work"]</h2>
+            <p class="muted">@T["Name the agent and the action it may attempt. Unknown actions are denied."]</p>
+        </article>
+        <article class="card">
+            <h2>@T["Publish YAML policy"]</h2>
+            <p class="muted">@T["Authorize only reads published versions. Drafts never grant ALLOW."]</p>
+        </article>
+        <article class="card">
+            <h2>@T["Human approval"]</h2>
+            <p class="muted">@T["High-value work waits in Approvals. Audit keeps the chain. Agent keys cannot approve."]</p>
+        </article>
+    </section>
+}
+else
+{
+    var configured = Model.HasReadyIntegration;
+    <partial name="_PageHeader" model='("Resumen", "Tu aplicación de un vistazo: operaciones pendientes, configuración y resultados.")' />
+    @if (Model.CanRead("agents.write")) { <section class="welcome-hero"><div><span class="eyebrow">@(configured ? T["Continúa con tu aplicación"] : T["Empieza aquí"])</span><h2 class="section-title">@(configured ? T["Tu siguiente acción, bajo control."] : T["Conecta tu primera integración."])</h2><p>@T["Elige tu editor o conecta una aplicación propia. La guía te acompaña hasta tu primera decisión."]</p><div class="row"><a class="button" href="/start">@(configured ? T["Abrir guía de inicio"] : T["Configurar mi primera integración →"])</a><a class="button ghost" href="/playground">@T["Probar una acción"]</a></div></div><div class="hero-mark" aria-hidden="true"><span>✓</span></div></section> }
+    <div class="metrics">
+        @if (Model.CanRead("approvals.read")) { <a class="card metric" href="/approvals"><div class="value">@Model.PendingApprovals</div><div class="label">@T["Esperando aprobación"]</div></a> }
+        @if (Model.CanRead("actions.read") && Model.CanRead("policies.read") && Model.CanRead("agents.read")) { <a class="card metric" href="/actions/coverage?filter=missing"><div class="value">@Model.CoverageGaps</div><div class="label">@T["Asignaciones por completar"]</div></a> }
+        @if (Model.CanRead("audit.read")) {
+            <a class="card metric" href="/audit/activity?filter=missing"><div class="value">@Model.Summary!.MissingEvidence</div><div class="label">@T["Permitidas · resultado pendiente"]</div></a>
+            <a class="card metric" href="/audit/activity?filter=failed"><div class="value">@Model.Summary!.FailedToday</div><div class="label">@T["Fallos reportados hoy"]</div></a>
+        }
+        @if (Model.CanRead("gateway.read")) { <a class="card metric" href="/access/ai-gateway#gateway-activity"><div class="value">@Model.Summary!.GatewaySpendUsd.ToString("0.##")</div><div class="label">@T["AI Gateway · USD este mes"]</div></a> }
+        @if (Model.CanRead("audit.read")) { <a class="card metric" href="/audit/activity?filter=budget"><div class="value">@Model.Summary!.BudgetBlocksToday</div><div class="label">@T["AI Gateway · bloqueos por presupuesto hoy"]</div></a> }
+    </div>
+    @if (Model.CanRead("agents.read") && Model.CanRead("actions.read") && Model.CanRead("policies.read") && Model.CanRead("audit.read")) {
+        <div class="card"><h2>@T["Estado de la integración"]</h2><ol class="setup-checks">
+            <li class="@(configured ? "ok" : "muted")">@T["Configuración"] @(configured ? T["lista"] : T["en curso"]) @T["— al menos un agente activo tiene una acción y una política publicada. Las asignaciones pendientes se muestran por separado."]</li>
+            <li class="@(Model.Summary!.AuthorizationTested ? "ok" : "muted")">@T["Decisión"] @(Model.Summary.AuthorizationTested ? T["evaluada"] : T["pendiente de prueba"])</li>
+            <li class="@(Model.Summary.ExecutionReported ? "ok" : "muted")">@T["Resultado"] @(Model.Summary.ExecutionReported ? T["reportado por una integración"] : T["todavía pendiente"])</li>
+        </ol><p>@T["La integración directa utiliza"] <code>POST /v1/authorize</code>@T[". AI Gateway y Guard MCP son opcionales."]</p><p class="hint">@T["Playground comprueba las decisiones. Un reporte del cliente no verifica de forma independiente una operación externa. Solo se controlan las llamadas que pasan por la integración."]</p></div>
+    }
+    @if (Model.CanRead("audit.read")) {
+        <div class="card"><h2>@T["Hoy · UTC"]</h2><p>@Model.ChecksToday @T["solicitudes evaluadas ·"] @Model.DenialsToday @T["denegaciones iniciales. Los recuentos incluyen todo el día."]</p><partial name="_RecentActivity" model="Model" /></div>
+    }
+}

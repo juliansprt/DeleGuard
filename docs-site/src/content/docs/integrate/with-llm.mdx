@@ -1,0 +1,308 @@
+---
+title: Integrar con un LLM
+description: Dónde enganchar Deleguard en un chat con tools (OpenAI, Anthropic u otro). El modelo propone; tu código autoriza y ejecuta.
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Si tu producto ya habla con un LLM (GPT, Claude, un modelo propio) **no cambias de proveedor ni metes Deleguard en el prompt**. Sigues llamando al modelo como hoy. Lo que cambia es **un `if` en tu orquestador**, en el instante en que el modelo pide una tool sensible.
+
+```text
+Usuario: "Cancela la factura FAC-8392"
+        │
+        ▼
+Tu app  ── messages + tools ──►  LLM
+        │                          │
+        │   tool_call: cancel_invoice({ invoice_id: "FAC-8392" })
+        ◄──────────────────────────┘
+        │
+        ▼
+Tu código  (el modelo ya no participa)
+  1. Carga la factura desde TU base de datos   ← hechos, no el JSON del LLM
+  2. POST /v1/authorize
+  3. ALLOW  → ejecuta invoiceService.cancel() → POST /v1/executions
+     DENY   → no ejecutes
+     REQUIRE_APPROVAL → no ejecutes; un humano verá Approvals
+        │
+        ▼
+Tu app  ── role: tool (resultado) ──►  LLM  ──►  texto al usuario
+```
+
+<Aside type="danger" title="El LLM no es el PDP">
+No pongas la política en el system prompt (“nunca canceles facturas de Hacienda”). El modelo puede ignorarla. Deleguard decide con YAML determinista; el modelo solo **redacta** lo que ya ocurrió.
+</Aside>
+
+## Qué tocas en el código (y qué no)
+
+| Capa | ¿La cambias? |
+| --- | --- |
+| Llamada a OpenAI / Anthropic / Azure | No. Mismas `tools`, mismo chat. |
+| UI del chat | Solo para mostrar “pendiente de aprobación” si hace falta. |
+| **El `switch` / loop que ejecuta `tool_calls`** | **Sí. Aquí va authorize.** |
+| ERP / `invoiceService.Cancel` | No. Se llama igual, pero solo si hay ALLOW. |
+
+Si hoy tienes algo como esto:
+
+```python
+if name == "cancel_invoice":
+    invoice_service.cancel(args["invoice_id"])   # ← side-effect directo
+    return "Cancelled"
+```
+
+el cambio es envolver esa línea, no reescribir el agente.
+
+## Recorrido paso a paso
+
+<Steps>
+
+1. **El usuario habla.** Tu backend guarda `actor.id` de la sesión (cookie, JWT). Ese id **no** lo inventa el modelo.
+
+2. **El LLM elige una tool.** Recibes un `tool_call` (OpenAI) o `tool_use` (Anthropic). Del JSON del modelo **solo usas identificadores** (`invoice_id`). Importes, estados y flags fiscales los lees de tu sistema de registro.
+
+3. **Mapeas tool → acción Deleguard.** `cancel_invoice` → `invoice.cancel`. Ese nombre tiene que existir en [Actions](/console/actions/) y en una política [Published](/console/policies/).
+
+4. **`POST /v1/authorize`** con la API key `dgk_…` (nunca el token de consola). Cuerpo: agente, actor de la sesión, acción, recurso **hidratado**.
+
+5. **Ramificas con `decision`**, no con el HTTP status (un DENY es 200).
+
+6. **Devuelves un `role: tool` al modelo** para que explique al usuario. El modelo no puede “reintentar el cancel” saltándose tu `if`.
+
+</Steps>
+
+## Ejemplo completo (OpenAI-style)
+
+El patrón es el mismo con cualquier SDK: miras `tool_calls`, autorizas, ejecutas o no, y reinyectas el resultado.
+
+<Tabs>
+<TabItem label="Python">
+
+```python
+import json, os, uuid, urllib.request
+from openai import OpenAI
+
+DELEGUARD = os.environ["DELEGUARD_URL"]          # http://127.0.0.1:5080
+DGK = os.environ["DELEGUARD_TOKEN"]              # dgk_…
+openai = OpenAI()
+
+TOOLS = [{
+    "type": "function",
+    "function": {
+        "name": "cancel_invoice",
+        "description": "Cancel an invoice by id. The server will authorize the action.",
+        "parameters": {
+            "type": "object",
+            "properties": {"invoice_id": {"type": "string"}},
+            "required": ["invoice_id"],
+        },
+    },
+}]
+
+def deleguard_authorize(invoice, *, actor_id):
+    body = {
+        "agent": {"id": "invoice-agent", "environment": "production"},
+        "actor": {"id": actor_id, "type": "human"},
+        "action": "invoice.cancel",
+        "resource": {
+            "type": "invoice",
+            "id": invoice.id,
+            "attributes": {
+                "amount": invoice.amount,
+                "currency": invoice.currency,
+                "status": invoice.status,
+                "reportedToTaxAuthority": invoice.reported_to_tax_authority,
+            },
+        },
+        "context": {"reason": "chat-tool"},
+    }
+    req = urllib.request.Request(
+        f"{DELEGUARD}/v1/authorize",
+        data=json.dumps(body).encode(),
+        headers={
+            "Authorization": f"Bearer {DGK}",
+            "Content-Type": "application/json",
+            "Idempotency-Key": uuid.uuid4().hex,
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read().decode())
+
+
+def run_cancel_invoice(invoice_id: str, actor_id: str) -> dict:
+    invoice = db.invoices.get(invoice_id)          # fuente de verdad
+    if invoice is None:
+        return {"ok": False, "error": "invoice_not_found"}
+
+    decision = deleguard_authorize(invoice, actor_id=actor_id)
+    kind = decision["decision"]
+
+    if kind == "DENY":
+        return {"ok": False, "decision": "DENY", "reason": decision.get("reason")}
+
+    if kind == "REQUIRE_APPROVAL":
+        return {
+            "ok": False,
+            "decision": "REQUIRE_APPROVAL",
+            "approval_id": decision["approval_id"],
+            "message": "Waiting for a human in the Deleguard console.",
+        }
+
+    invoice_service.cancel(invoice.id)             # solo con ALLOW
+    report_execution(decision["decision_id"])
+    return {"ok": True, "decision": "ALLOW", "decision_id": decision["decision_id"]}
+
+
+def chat_turn(messages, actor_id: str):
+    response = openai.chat.completions.create(
+        model="gpt-4.1",
+        messages=messages,
+        tools=TOOLS,
+    )
+    msg = response.choices[0].message
+    messages.append(msg)
+
+    if not msg.tool_calls:
+        return msg.content
+
+    for call in msg.tool_calls:
+        args = json.loads(call.function.arguments)
+        if call.function.name == "cancel_invoice":
+            result = run_cancel_invoice(args["invoice_id"], actor_id)
+        else:
+            result = {"ok": False, "error": "unknown_tool"}
+        messages.append({
+            "role": "tool",
+            "tool_call_id": call.id,
+            "content": json.dumps(result),
+        })
+
+    # Segunda pasada: el modelo redacta "no pude cancelar porque…"
+    final = openai.chat.completions.create(model="gpt-4.1", messages=messages)
+    return final.choices[0].message.content
+```
+
+</TabItem>
+<TabItem label="C# / Semantic Kernel">
+
+El hook no es el `ChatCompletion`. Es el código que **invoca** la función nativa:
+
+```csharp
+[KernelFunction, Description("Cancel an invoice by id")]
+public async Task<string> CancelInvoiceAsync(string invoiceId)
+{
+    var invoice = await _db.Invoices.FindAsync(invoiceId)
+        ?? throw new InvalidOperationException("invoice_not_found");
+
+    var decision = await _deleguard.AuthorizeAsync(
+        action: "invoice.cancel",
+        resourceType: "invoice",
+        resourceId: invoice.Id,
+        attributes: new
+        {
+            amount = invoice.Amount,
+            currency = invoice.Currency,
+            status = invoice.Status,
+            reportedToTaxAuthority = invoice.ReportedToTaxAuthority
+        },
+        agentId: "invoice-agent",
+        environment: "production");
+
+    if (decision.Decision == "DENY")
+        return JsonSerializer.Serialize(new { ok = false, decision = "DENY", reason = decision.Reason });
+
+    if (decision.Decision == "REQUIRE_APPROVAL")
+        return JsonSerializer.Serialize(new { ok = false, decision = "REQUIRE_APPROVAL", approval_id = decision.ApprovalId });
+
+    if (decision.Decision != "ALLOW")
+        throw new InvalidOperationException(decision.Decision);
+
+    await _invoices.CancelAsync(invoice.Id);
+    await _deleguard.ReportExecutionAsync(decision.DecisionId, "SUCCESS");
+    return JsonSerializer.Serialize(new { ok = true, decision = "ALLOW" });
+}
+```
+
+Si usas un `IFunctionInvocationFilter` / middleware de SK, autoriza **ahí** para no repetir el `if` en cada función.
+
+</TabItem>
+<TabItem label="Anthropic">
+
+```python
+response = client.messages.create(
+    model="claude-sonnet-4-6",
+    tools=[{
+        "name": "cancel_invoice",
+        "description": "Cancel an invoice by id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"invoice_id": {"type": "string"}},
+            "required": ["invoice_id"],
+        },
+    }],
+    messages=messages,
+)
+
+for block in response.content:
+    if block.type != "tool_use":
+        continue
+    result = run_cancel_invoice(block.input["invoice_id"], actor_id)
+    messages.append({"role": "user", "content": [{
+        "type": "tool_result",
+        "tool_use_id": block.id,
+        "content": json.dumps(result),
+    }]})
+```
+
+`run_cancel_invoice` es **exactamente** la función del tab Python: hidratar → authorize → ramificar.
+
+</TabItem>
+</Tabs>
+
+`report_execution` y el cliente HTTP mínimo están en [Python](/integrate/python/) y [HTTP](/integrate/http/).
+
+## Cómo hablarle al modelo (tool result)
+
+El LLM **sí** debe enterarse del resultado, para no alucinar un “ya cancelé”. Devuélvele JSON aburrido, no un ensayo:
+
+| `decision` | `content` del tool | Qué hace el modelo después |
+| --- | --- | --- |
+| `ALLOW` | `{ "ok": true, "decision": "ALLOW" }` | Confirma al usuario. |
+| `DENY` | `{ "ok": false, "decision": "DENY", "reason": "Tax-reported…" }` | Explica con el `reason`. **No** vuelvas a llamar `cancel_invoice` en este turno. |
+| `REQUIRE_APPROVAL` | `{ "ok": false, "pending": true, "approval_id": "apr_…" }` | Dice que un humano debe aprobar en la consola. |
+
+Cuando el humano pulse **Approve once**, tu app puede:
+
+1. Avisar al usuario (polling de `GET /v1/decisions/{id}` o un webhook interno).
+2. Ejecutar entonces `invoiceService.cancel` **con el permit**, y `POST /v1/executions`.
+3. O pedir al agente un segundo authorize (nueva `Idempotency-Key`) si el recurso pudo haber cambiado.
+
+No dejes que el modelo “apruebe” pegando un token `dgc_`. Eso es [invariante](/concepts/authorization-path/).
+
+## LangChain, LlamaIndex, MCP
+
+Es el **mismo** sitio de enganche, con otro nombre:
+
+| Framework | Dónde autorizar |
+| --- | --- |
+| Loop propio / OpenAI tools | `for call in message.tool_calls` |
+| Semantic Kernel | Cuerpo de la `KernelFunction` o `IFunctionInvocationFilter` |
+| LangChain | Wrapper de la `StructuredTool` / `ToolNode` **antes** de `func()` |
+| LlamaIndex | `FunctionTool` wrapper |
+| MCP | Adaptador de `tools/call` → authorize → `forward` ([nivel C](/integrate/overview/)) |
+
+## Errores frecuentes
+
+| Error | Qué pasa | Qué hacer |
+| --- | --- | --- |
+| Autorizar con `args` del LLM (`amount` inventado) | El modelo miente; la política ve datos falsos | Hidratar siempre desde tu DB/ERP |
+| Autorizar al **empezar** el chat | No hay acción ni recurso todavía | Autoriza **cada** tool call |
+| Meter YAML en el system prompt | El modelo puede saltárselo | La política vive en Deleguard |
+| Tratar DENY como excepción HTTP | Reintentas la tool | DENY es 200; lee `decision` |
+| Usar `dgc_…` en el agente | 401 en authorize | Key `dgk_…` |
+| Ejecutar y **luego** authorize | Ya hiciste el daño | Authorize **antes** del side-effect |
+
+<Aside type="tip" title="Tools de solo lectura">
+`get_invoice` o `search` no tienen que pasar por Deleguard. Autoriza **side-effects**: cancelar, pagar, borrar, exportar, desplegar. Declara esas acciones en la consola.
+</Aside>
+
+Siguiente: [HTTP del authorize](/integrate/http/) · [errores 401/503](/integrate/errors/) · [Approvals en la consola](/console/approvals/).

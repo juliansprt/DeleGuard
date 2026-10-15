@@ -1,0 +1,11 @@
+id: "ide-service-manage"
+version: 1
+priority: 100
+match:
+  action: "service.manage"
+  resource_type: "service"
+rules:
+  - name: "deny-service-management"
+    effect: "DENY"
+    reason: "IDE service management requires an administrator-authored allow policy."
+fallback: "DENY"

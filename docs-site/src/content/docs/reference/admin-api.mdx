@@ -1,0 +1,47 @@
+---
+title: API de administración
+description: Endpoints de consola (agentes, acciones, políticas, audit) que no están en el OpenAPI de arranque.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El contrato de producto (`deleguard_dev_pack/spec/openapi.yaml`, también en [OpenAPI](/api/)) cubre el núcleo: authorize, decisions, approve/deny, executions.
+
+La API **ya implementada** añade administración. Todas estas rutas exigen credencial de **consola** (`dgc_…` o cookie), no la key de agente.
+
+| Método | Ruta | Uso |
+| --- | --- | --- |
+| `GET` | `/v1/approvals` | Cola pendiente (hechos canónicos). |
+| `GET` | `/v1/audit/events` | Hasta 100 eventos, hashes incluidos. |
+| `GET` `POST` | `/v1/agents` | Listar / crear. El POST revela `api_key` **una vez**. |
+| `POST` | `/v1/agents/{agentId}/rotate-key` | Nueva key; la anterior muere. |
+| `POST` | `/v1/agents/{agentId}/disable` | Deshabilitar el agente; authorize falla cerrado. |
+| `POST` | `/v1/agents/{agentId}/enable` | Volver a habilitar un agente deshabilitado. |
+| `GET` `POST` | `/v1/environments` | Listar / crear slugs de entorno (`production`, `staging`, …). |
+| `GET` `PATCH` `DELETE` | `/v1/environments/{environmentId}` | Leer, renombrar o borrar. El DELETE falla cerrado si hay agentes o es el último entorno. |
+| `GET` `POST` | `/v1/actions` | Listar / declarar acción + riesgo. |
+| `GET` `POST` | `/v1/policies` | Listar / crear draft desde `{ "yaml": "…" }`. |
+| `GET` | `/v1/policies/{policyId}` | Política + versiones (incluye YAML). |
+| `POST` | `/v1/policies/{policyId}/versions` | Nueva versión draft. |
+| `POST` | `/v1/policies/{policyId}/publish` | Cuerpo opcional `{ "version_id": "…" }`. |
+| `POST` | `/v1/policies/{policyId}/test` | Fixture; **no** escribe decisión de audit. |
+
+| `GET` `POST` | `/v1/users` | Listar / crear usuarios. El POST puede devolver `REQUIRE_APPROVAL`. |
+| `POST` | `/v1/users/{userId}/disable` | Deshabilitar usuario y revocar tokens MCP. |
+| `POST` | `/v1/users/{userId}/roles` | Reemplazar roles. |
+| `GET` | `/v1/roles` | Roles y permisos del catálogo. |
+| `POST` | `/v1/roles/{roleId}/permissions` | Permisos del catálogo cerrado. |
+| `GET` | `/v1/mcp` | Estado del MCP de Administración. |
+| `POST` | `/v1/mcp/settings` | Activar el MCP y elegir tools. |
+| `GET` `POST` | `/v1/mcp/tokens` | Listar / emitir tokens `dgm_…` (una vez). |
+| `POST` | `/v1/mcp/tokens/{credentialId}/revoke` | Revocar un token. |
+
+MCP Streamable HTTP para Cursor / Claude: `POST /mcp` con `Authorization: Bearer dgm_…` (protocolo `2025-03-26`, con `initialize`). Cada `tools/call` se autoriza en proceso y devuelve `structuredContent` más texto. Los listados van paginados (`limit`/`cursor`). Tools de webhooks: `webhook_list|get|create|update|rotate_secret|ping|attempts|resend|recover` (el secreto se muestra una vez). Resources de solo lectura: `deleguard://policy|decision|approval/{id}` y guías de entorno `deleguard://docs/{slug}` (`docs_list` / `docs_get`, prompt `configure-environment`). Sitio: `http://localhost:4321`. Los prompts guían la revisión; no hay tools de approve/deny. Las keys de agente (`dgk_…`) reciben `401` con `WWW-Authenticate`.
+
+El login de consola es email/contraseña (`admin@demo.local` / `DeleguardDemo!23` en demo). El token `dgc_…` sigue siendo bootstrap de org-admin.
+
+OpenAPI runtime (lo que ASP.NET expone al vuelo): `GET /openapi/v1.json`.
+
+<Aside type="tip">
+La consola Razor es la UI de estas APIs. Si automatizas altas de agentes, consume los JSON; no scrapees HTML.
+</Aside>

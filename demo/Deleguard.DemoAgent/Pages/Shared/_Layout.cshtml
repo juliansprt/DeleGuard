@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · Deleguard Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="~/img/brand-mark.png" type="image/png" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="nav">
+        <a class="brand" href="/">
+            <img class="brand-mark" src="~/img/brand-mark.png" alt="" asp-append-version="true" />
+            <span class="brand-wordmark">Invoice agent</span>
+        </a>
+        <nav>
+            <a href="http://localhost:5080">Deleguard</a>
+            <a href="http://localhost:5080/approvals">Approvals</a>
+            <a href="http://localhost:5080/playground">Playground</a>
+        </nav>
+    </header>
+    <main class="container">
+        @RenderBody()
+    </main>
+</body>
+</html>

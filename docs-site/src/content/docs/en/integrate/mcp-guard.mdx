@@ -1,0 +1,54 @@
+---
+title: Guard MCP
+description: Put Deleguard in front of your MCP tools so the model cannot skip authorize.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Guard MCP** is a client-side PEP (`src/Deleguard.McpGuard`). Cursor talks only to the Guard. The Guard calls `POST /v1/authorize` with a `dgk_` agent key and forwards `tools/call` to your downstream MCP **only** on `ALLOW`.
+
+This is integration level C. The decision engine stays on HTTP. The Guard is not the Administration MCP (`POST /mcp` + `dgm_` tokens).
+
+```text
+Cursor → Guard MCP → POST /v1/authorize
+                  → ALLOW: forward tools/call → POST /v1/executions
+                  → DENY: return reason, do not forward
+                  → REQUIRE_APPROVAL: return approval_id, poll get_decision
+                  → PDP 503: fail closed, do not forward
+```
+
+<Aside type="danger" title="Bypass">
+Replace downstream MCP entries with the Guard. If Cursor still has the GitHub (or invoice) MCP registered beside the Guard, the model can call it directly and skip policy.
+</Aside>
+
+## Cursor snippet
+
+```json
+{
+  "mcpServers": {
+    "deleguard-guard": {
+      "command": "dotnet",
+      "args": ["run", "--project", "src/Deleguard.McpGuard"],
+      "env": {
+        "Deleguard__Url": "http://127.0.0.1:5080",
+        "Deleguard__ApiKey": "dgk_YOUR_AGENT_KEY",
+        "Deleguard__AgentId": "invoice-agent"
+      }
+    }
+  }
+}
+```
+
+stdio is the default. For a sidecar on your network: `dotnet run --project src/Deleguard.McpGuard -- --http` (Streamable HTTP at `/mcp`). Set `Deleguard__HttpToken` and send `Authorization: Bearer`. Without that token the HTTP Guard refuses to start.
+
+Use a **`dgk_` agent key**. `dgm_` Administration MCP tokens cannot call `/v1/authorize` or `/v1/guard/config`. The Guard has **no approve/deny tool** — humans approve in the console.
+
+After `REQUIRE_APPROVAL`, poll `get_decision`. If the Guard process restarted, call the original guarded tool again; authorize is idempotent. The Guard forwards only when the decision is `ALLOW` **and** the permit is still active.
+
+## Bindings
+
+On **Actions**, map `mcp_server` + `mcp_tool` to a protected action and JSON paths for `resource.id` / attributes. The Guard loads them from `GET /v1/guard/config`. Unmapped tools are not listed and are denied.
+
+Demo seed: `invoice-demo__cancel_invoice` → `invoice.cancel`.
+
+Configure downstream servers in `src/Deleguard.McpGuard/appsettings.json` (`DownstreamMcps`: stdio command or HTTP URL).

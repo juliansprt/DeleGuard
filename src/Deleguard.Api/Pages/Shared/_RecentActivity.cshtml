@@ -1,0 +1,35 @@
+@model Deleguard.Api.Pages.IndexModel
+<div class="card-head">
+    <h2>@T["Actividad reciente"]</h2>
+    <a href="/audit">@T["Ver registro"]</a>
+</div>
+@if (Model.RecentEvents.Count == 0)
+{
+    <p class="muted">@T["Todavía no hay eventos. Prueba una acción desde el simulador para ver su decisión."]</p>
+}
+else
+{
+    <ul class="timeline">
+        @foreach (var item in Model.RecentEvents)
+        {
+            var outcome = ConsoleFormatting.EventOutcome(item);
+            <li>
+                <span class="muted">@item.CreatedAt.UtcDateTime.ToString("HH:mm:ss")</span>
+                <span class="timeline-main">
+                    <strong>@T[ConsoleFormatting.EventLabel(item.EventType)]</strong>
+                    @if (!string.IsNullOrWhiteSpace(outcome))
+                    {
+                        <span class="badge @ConsoleFormatting.DecisionBadge(outcome)">@outcome</span>
+                    }
+                    @{
+                        var detail = ConsoleFormatting.EventDetail(item);
+                    }
+                    @if (!string.IsNullOrWhiteSpace(detail))
+                    {
+                        <span class="muted timeline-summary">@detail</span>
+                    }
+                </span>
+            </li>
+        }
+    </ul>
+}

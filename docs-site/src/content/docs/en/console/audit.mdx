@@ -1,0 +1,36 @@
+---
+title: Audit
+description: Append-only ledger of decisions, approvals, and executions, with a hash chain.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Audit** (`/audit`) is under **Observe**. It is the authorization ledger: not edited, not deleted. Each event points at the previous hash.
+
+![Audit table with Decision, Approval, and Execution, plus Payload and hash chain](/console/audit.png)
+
+## How to read it
+
+| Column | Content |
+| --- | --- |
+| **Time** | UTC compact (`MM-dd HH:mm:ss`); hover for the full timestamp. |
+| **Event** | `Decision`, `Approval`, `Expired`, or `Execution`. |
+| **Outcome** | `ALLOW`, `DENY`, `REQUIRE_APPROVAL`, or `APPROVE` when the payload has one. |
+| **Summary** | Action, resource, actor — without repeating the outcome. |
+| **Decision** | Short `dec_…` id; hover for the full value. |
+
+Tabs filter by event family. Search matches action, resource, decision id, and payload text.
+
+**Payload** opens the JSON and the `prev` / `hash` fields on that row. That is how you prove integrity: if someone altered an event, the chain breaks.
+
+If it is empty, **Open Playground** writes the first link.
+
+<Aside type="note">
+The console lists up to 100 events. The same feed is `GET /v1/audit/events` (console credential). Authorize does not log prompts or model output.
+</Aside>
+
+## Activity and decision records
+
+Activity (`/audit/activity`) has paginated decision views and filters for missing evidence, failures today, Gateway calls, and budget denials today. Open a timestamp to inspect the decision record. **Export record** downloads versioned JSON without permit tokens or arbitrary metadata. The event ledger remains at `/audit`.
+
+![Decision record](/console/decision-record.png)

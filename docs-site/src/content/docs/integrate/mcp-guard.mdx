@@ -1,0 +1,54 @@
+---
+title: Guard MCP
+description: Pon Deleguard delante de tus tools MCP para que el modelo no pueda saltarse authorize.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Guard MCP** es un PEP en el cliente (`src/Deleguard.McpGuard`). Cursor habla solo con el Guard. El Guard llama `POST /v1/authorize` con una clave de agente `dgk_` y reenvía `tools/call` al MCP downstream **solo** si hay `ALLOW`.
+
+Esto es el nivel C de integración. El motor de decisión sigue en HTTP. El Guard no es el MCP de administración (`POST /mcp` + tokens `dgm_`).
+
+```text
+Cursor → Guard MCP → POST /v1/authorize
+                  → ALLOW: reenvía tools/call → POST /v1/executions
+                  → DENY: devuelve el motivo, no reenvía
+                  → REQUIRE_APPROVAL: devuelve approval_id, sondea get_decision
+                  → PDP 503: fail closed, no reenvía
+```
+
+<Aside type="danger" title="Bypass">
+Sustituye las entradas MCP downstream por el Guard. Si Cursor sigue teniendo el MCP de GitHub (o de facturas) registrado junto al Guard, el modelo puede llamarlo y saltarse la política.
+</Aside>
+
+## Snippet de Cursor
+
+```json
+{
+  "mcpServers": {
+    "deleguard-guard": {
+      "command": "dotnet",
+      "args": ["run", "--project", "src/Deleguard.McpGuard"],
+      "env": {
+        "Deleguard__Url": "http://127.0.0.1:5080",
+        "Deleguard__ApiKey": "dgk_YOUR_AGENT_KEY",
+        "Deleguard__AgentId": "invoice-agent"
+      }
+    }
+  }
+}
+```
+
+stdio es el valor por defecto. Sidecar en tu red: `dotnet run --project src/Deleguard.McpGuard -- --http` (Streamable HTTP en `/mcp`). Define `Deleguard__HttpToken` y envía `Authorization: Bearer`. Sin ese token el Guard HTTP no arranca.
+
+Usa una clave de agente **`dgk_`**. Los tokens `dgm_` del MCP de administración no pueden llamar `/v1/authorize` ni `/v1/guard/config`. El Guard **no tiene tool approve/deny**: un humano aprueba en la consola.
+
+Tras `REQUIRE_APPROVAL`, sondea `get_decision`. Si el proceso del Guard se reinició, vuelve a llamar la tool original; authorize es idempotente. El Guard solo reenvía con `ALLOW` **y** un permit activo.
+
+## Bindings
+
+En **Actions**, mapea `mcp_server` + `mcp_tool` a una acción protegida y a JSON paths de `resource.id` / atributos. El Guard los carga de `GET /v1/guard/config`. Las tools sin mapping no se listan y se deniegan.
+
+Seed de demo: `invoice-demo__cancel_invoice` → `invoice.cancel`.
+
+Configura los MCP downstream en `src/Deleguard.McpGuard/appsettings.json` (`DownstreamMcps`: comando stdio o URL HTTP).

@@ -1,0 +1,52 @@
+---
+title: AI Gateway
+description: Connect agents with base URL, a dgk_ key, and a catalog alias. Set spend, add the OpenAI chat pair, and keep provider keys on the PEP.
+---
+
+Use **Agents, Actions, and Policies directly with `POST /v1/authorize`**, without configuring AI Gateway, providers, models, budgets, or Guard MCP. Your application enforces the decision before executing and can report the result with `POST /v1/executions`. AI Gateway is optional for model calls; Guard MCP is optional for MCP tools.
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The **AI Gateway** page (`/access/ai-gateway`) is the control plane for the optional OpenAI-compatible PEP. Agents send `Authorization: Bearer dgk_…` to `http://127.0.0.1:5088/v1`. Policy still decides `ALLOW`, `DENY`, and `REQUIRE_APPROVAL`. Prompts and provider keys never reach Deleguard.
+
+## What you set here
+
+1. **Status and budget** — enable the gateway, monthly USD ceiling, remaining spend. Exhaustion is `DENY`.
+2. **Connect the agent** — copy curl, TypeScript, Python, or PEP env snippets. Checklist: gateway on, catalog aliases, BYOK on the PEP.
+3. **Catalog** — stable aliases (`chat.default`) mapped to a provider model. One-click **Add OpenAI chat pair** creates `chat.cheap`, `chat.strong`, and `chat.default` in the same fallback group and region.
+
+Routing after `ALLOW` stays inside that allowlist:
+
+| Console label | Internal mode |
+| --- | --- |
+| Always the requested alias | `static` |
+| Cheap unless tools, JSON schema, image, or long | `heuristic` |
+| Try cheap, escalate if needed | `cascade` |
+
+`heuristic` and `cascade` skip cheap when the request has **tools, JSON schema, or images**. Length is only a fallback signal (it is not difficulty). After `ALLOW` the PEP still reserves the worst-case output cap, then may send a lower TALE `max_tokens` on simple prompts. Responses add `X-Deleguard-Route-Reason` (`length_cheap`, `tools`, `json_schema`, `image`, `cascade_skip_length`, `cascade_escalate`, …).
+
+Token caps, exact cache TTL, prefix cache, and shadow logs live under **Advanced** (collapsed).
+
+<Aside type="caution">
+Provider keys (`sk-…`) stay on the PEP process (`Providers__openai__ApiKey`). Do not paste them into the console, MCP, or tickets. There is no approve tool on the Administration MCP — pending spend is approved at `/approvals/{id}`.
+</Aside>
+
+## Setup
+
+<Steps>
+
+1. Sign in to the [console](/en/console/login/) and open **Access → AI Gateway**.
+2. Enable the gateway and set a monthly budget. Save.
+3. Click **Add OpenAI chat pair** (or add routes yourself). Provider is a select: OpenAI, Azure OpenAI, Anthropic, or custom.
+4. On the PEP host, set `Providers__openai__ApiKey` and run `dotnet run --project src/Deleguard.AiGateway --urls http://127.0.0.1:5088`.
+5. Copy a snippet. Point the OpenAI SDK at `http://127.0.0.1:5088/v1` with the agent `dgk_` key and model `chat.default`.
+
+</Steps>
+
+`GET /health` on the PEP returns `{ status, pdp_configured, providers }` with provider **names** only. Successful calls add `X-Deleguard-Decision`, `X-Deleguard-Model`, `X-Deleguard-Cache`, and `X-Deleguard-Route-Reason`. Failover after `ALLOW` retries **429 / 503 / 5xx** inside the catalog allowlist.
+
+Administration MCP: prompt `configure-ai-gateway`, tools `gateway_status`, `gateway_update_settings`, `gateway_apply_openai_chat_pair`.
+
+## Connected activity
+
+The top navigation separates Connection, Models, Controls, and Activity. Activity shows the selected application; the budget is organization-wide. Each row links to a decision record and displays requested/used models, reported routing reason, execution result, and reported cost where available. A dash means no report, not zero usage. Audit permission is required.

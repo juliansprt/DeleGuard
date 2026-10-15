@@ -1,0 +1,27 @@
+---
+title: Path de autorización
+description: Por qué el modelo no decide, fail closed y separación agente / consola.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+```text
+propuesta del modelo
+  → tu código construye action + resource (hechos, no prosa)
+  → POST /v1/authorize
+  → motor YAML determinista
+  → decisión persistida + evento de audit
+  → respuesta ALLOW | DENY | REQUIRE_APPROVAL
+```
+
+Nada en ese camino llama a un LLM, a Slack, a email ni a analytics. Si el PDP o Postgres fallan, **503** y no hay ALLOW de consolación.
+
+Cómo se ve eso dentro de un chat con tools: [Integrar con un LLM](/integrate/with-llm/).
+
+El modelo puede **redactar** un motivo para el usuario (“no pude cancelar porque Hacienda…”). Ese texto no entra a Approvals. El humano ve Agent, Amount, Resource, Policy.
+
+<Aside type="caution">
+Default deny: política ausente, atributo faltante o acción desconocida es DENY, no un “déjalo pasar”.
+</Aside>
+
+Dos principals: **actor** (humano/servicio) y **agente**. El privilegio del usuario no se copia entero al bot. La política puede exigir la intersección `actor ∩ agente ∩ contexto`.

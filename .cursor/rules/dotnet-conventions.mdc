@@ -1,0 +1,13 @@
+---
+description: C# conventions for Deleguard handlers and domain types.
+globs: "**/*.cs"
+alwaysApply: false
+---
+
+# .NET conventions
+
+- Prefer records/DTOs at the HTTP edge and explicit entities in Domain.
+- One handler per use case (`AuthorizeHandler`, `ResolveApprovalHandler`, `ReportExecutionHandler`).
+- Persist the decision and the audit event in the same EF transaction before returning ALLOW or REQUIRE_APPROVAL.
+- Use prefixed ids (`org_`, `agt_`, `dec_`, `apr_`, `perm_`).
+- JSON at the HTTP boundary is snake_case.

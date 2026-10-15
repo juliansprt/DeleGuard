@@ -1,0 +1,11 @@
+.git
+**/bin/
+**/obj/
+**/.vs/
+deleguard_dev_pack
+!deleguard_dev_pack/spec
+!deleguard_dev_pack/spec/openapi.yaml
+research
+docs-site/node_modules
+docs-site/dist
+docs-site/.astro

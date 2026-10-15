@@ -1,0 +1,38 @@
+---
+title: Control IDE agents
+description: Policies, approvals and evidence for integrated tools, without AI Gateway.
+---
+
+DeleGuard authorizes integrated Cursor, VS Code/Copilot and Claude Code tools through a local component and hooks. **AI Gateway is not required.**
+
+![IDE project registration in the DeleGuard console](/console/ide-control.png)
+
+## Setup
+
+For a first installation, open the four-step **IDE control** guide. Download the installer from the console, select the project, IDE and operating system, and copy a command containing the correct agent and environment. You do not need the DeleGuard source repository.
+
+The full installation path is your working project folder. Protected directory paths are relative to that folder. The diagnostic checks connectivity; the protected-read exercise checks the actual approval flow.
+
+1. Register an application and agent.
+2. Open **Agents → IDE control** (`/ide`) and register the project, agent and protected or forbidden directories.
+3. Prepare actions and policy drafts from the project card. Review cases and publish through the existing policy editor.
+4. Install the adapter following `integrations/ide/README.md`. Python 3.11 is required; agent credentials are stored outside the repository using operating system protection.
+5. Test the specific IDE version before considering its coverage operational.
+
+Templates allow `src`, require approval for `infra/production` and deny other paths. Adapt them before publishing. Read, list, search, create, write, delete and move are separate actions.
+
+## Protected operations
+
+A read of `infra/production/config.yaml` calls `/v1/authorize`. If approval is required, the hook blocks that attempt and links to **Approvals**. After a human approves, retry the same operation. The component checks identity and state, consumes the permission and releases one call. The subsequent event reports its result.
+
+Pending, rejected and expired requests do not release tools. Changing the path, destination, tool or arguments requires new authorization. An uncertain operation is never automatically replayed.
+
+Temporary grants bind an agent, project, directory and actions, default to 15 minutes and can be revoked. Every operation still calls the server. Delete, process and MCP actions are excluded. A grant satisfies project-level protection only when the published policy allows the operation; it cannot override a YAML denial or explicit approval requirement.
+
+## Privacy and limits
+
+Only metadata and hashes are sent by default. An optional project setting allows an explicit tool-provided diff. Prompts, whole files and terminal outputs are not automatically uploaded.
+
+Hooks do not provide operating system isolation. Indexing, extensions and processes outside them remain uncovered. Approving a command does not verify its filesystem effects. Session capabilities are adapter reports, not attestation. Versions without real validation appear as `unverified`.
+
+Automated tests and a three-platform CI matrix are included. Interactive testing of each IDE/OS combination remains required; follow the integration README checklist before claiming support.

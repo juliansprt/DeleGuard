@@ -1,0 +1,9 @@
+@page "/audit/activity"
+@model Deleguard.Api.Pages.Audit.ActivityModel
+@{ ViewData["Title"]="Actividad"; ViewData["Nav"]="audit"; }
+<partial name="_PageHeader" model='("Actividad", "Consulta qué se solicitó, por qué se tomó cada decisión y qué resultado reportó la integración.")' />
+<nav class="filter-chips" aria-label="@T["Filtrar actividad"]">@foreach(var filter in new[]{("","Todo"),("allow","Allowed"),("review","Awaiting review"),("deny","Denied"),("ide","IDE requests"),("playground","Console tests"),("missing","Resultado pendiente"),("failed","Fallos de hoy"),("gateway","AI Gateway"),("budget","Límite de presupuesto")}){<a asp-page="/Audit/Activity" asp-route-AgentId="@Model.AgentId" asp-route-Filter="@filter.Item1" class="filter-chip @((Model.Filter ?? "")==filter.Item1 ? "selected" : "")" aria-current="@((Model.Filter ?? "")==filter.Item1 ? "page" : null)">@T[filter.Item2]</a>}</nav>
+<p class="hint">@T["Los filtros de hoy usan UTC. Una decisión permitida puede tener su resultado todavía pendiente."] <a href="/audit">@T["Ver registro de eventos →"]</a></p>
+@if(!string.IsNullOrWhiteSpace(Model.AgentId)){<p class="quiet-note">@T["Mostrando la actividad de un agente."] <a href="/audit/activity">@T["Ver todos los agentes"]</a></p>}
+<partial name="_DecisionActivity" model="Model.Activity.Items" />
+<nav class="row" aria-label="@T["Páginas de actividad"]">@if(Model.Activity.Page>1){<a href="@Model.PageUrl(Model.Activity.Page-1)">@T["← Anterior"]</a>}<span>@T["Página"] @Model.Activity.Page</span>@if(Model.Activity.HasNext){<a href="@Model.PageUrl(Model.Activity.Page+1)">@T["Siguiente →"]</a>}</nav>

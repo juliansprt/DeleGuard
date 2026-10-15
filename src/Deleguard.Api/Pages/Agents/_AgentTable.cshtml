@@ -1,0 +1,80 @@
+@using Deleguard.Domain.Identity
+@model Deleguard.Api.Pages.Agents.IndexModel
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>@T["Agent"]</th>
+                <th>@T["Status"]</th>
+                <th>@T["Key prefix"]</th>
+                @if (Model.CanWrite)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var agent in Model.Agents)
+        {
+            var isAdminMcp = string.Equals(agent.ExternalId, AccessControlIds.AdminMcpExternalId, StringComparison.Ordinal);
+            <tr class="@(agent.Enabled ? null : "is-disabled")">
+                <td>
+                    <div><a href="/agents/@agent.Id">@agent.DisplayName</a></div>
+                    <code>@agent.ExternalId</code>
+                    <div class="muted id-sub">@agent.Id</div>
+                </td>
+                <td>
+                    <span class="badge @(string.Equals(agent.EnvironmentName, "production", StringComparison.OrdinalIgnoreCase) ? "high" : "neutral")">@agent.EnvironmentName</span>
+                    <span class="badge @(agent.Enabled ? "allow" : "neutral")">@(agent.Enabled ? T["Enabled"] : T["Disabled"])</span>
+                </td>
+                <td class="hash">@(agent.ActiveKeyPrefix ?? "—")</td>
+                @if (Model.CanWrite)
+                {
+                    <td>
+                        <div class="row-actions">
+                            @if (agent.Enabled)
+                            {
+                                <form method="post" asp-page="/Agents/Index" asp-page-handler="Rotate">
+                                    <input type="hidden" name="agentId" value="@agent.Id" />
+                                    <button type="submit"
+                                            class="ghost"
+                                            data-confirm
+                                            data-confirm-title="@T["Rotate this API key?"]"
+                                            data-confirm-body="@T["The previous key stops working immediately. Authorize calls fail until you update the agent secret and, if you use Playground, paste the new key there."]"
+                                            data-confirm-action="@T["Rotate key"]"
+                                            data-confirm-danger="true">@T["Rotate key"]</button>
+                                </form>
+                                @if (!isAdminMcp)
+                                {
+                                    <form method="post" asp-page="/Agents/Index" asp-page-handler="Disable">
+                                        <input type="hidden" name="agentId" value="@agent.Id" />
+                                        <button type="submit"
+                                                class="ghost"
+                                                data-confirm
+                                                data-confirm-title="@T["Disable this agent?"]"
+                                                data-confirm-body="@T["Authorize calls from this agent will fail closed until it is re-enabled. Existing key hashes are kept; this is not a rotation."]"
+                                                data-confirm-action="@T["Disable agent"]"
+                                                data-confirm-danger="true">@T["Disable"]</button>
+                                    </form>
+                                }
+                            }
+                            else
+                            {
+                                <form method="post" asp-page="/Agents/Index" asp-page-handler="Enable">
+                                    <input type="hidden" name="agentId" value="@agent.Id" />
+                                    <button type="submit"
+                                            class="ghost"
+                                            data-confirm
+                                            data-confirm-title="@T["Enable this agent?"]"
+                                            data-confirm-body="@T["This workload will be able to call /v1/authorize again with its current API key."]"
+                                            data-confirm-action="@T["Enable agent"]">@T["Enable"]</button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

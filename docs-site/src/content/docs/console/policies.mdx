@@ -1,0 +1,80 @@
+---
+title: Policies
+description: Listar, crear, probar y publicar políticas YAML. Authorize solo lee la versión Published.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Policies** (`/policies`) es el contrato del cliente. El YAML no es Rego: es el DSL de Deleguard. Authorize **ignora** drafts.
+
+## Lista
+
+![Tabla All policies y formulario Create policy](/console/policies.png)
+
+- Badge verde `vN` = Authorize usa esa versión.
+- **Draft** = nadie la usa todavía.
+- **Open** abre el detalle.
+- **Save draft** crea id + action + resource type con fallback DENY y cero reglas, luego abre el editor visual. Aún no decide.
+- **Paste YAML instead** es para pegar un contrato de `policies/*.yaml`.
+
+## Editor visual
+
+![Editor Visual con reglas y simulador](/console/policy-detail.png)
+
+<Steps>
+
+1. Pestaña **Visual** — id, version, priority, action, resource type, fallback DENY, reglas y condiciones. **Add rule** / **Add condition**. Las reglas nuevas nacen en DENY.
+2. **Simulator** — agent, environment, resource id, expected effect y presets de atributos (`Draft low`, `High value`, `Tax reported`). **Test** evalúa el YAML del editor **sin** escribir una decisión de audit. Si ninguna regla dispara: *No rule matched → fallback DENY*.
+3. **Save as new version** — crea un draft en la lista Versions de la derecha. No publica.
+4. **Load into editor** compara una versión anterior. **Publish** pide confirmación. A partir de ese momento authorize usa esa versión.
+
+</Steps>
+
+Los badges **Fail-closed** y **Fallback DENY** recuerdan el default: si nada matchea, DENY. Los comentarios del YAML se pierden al editar en visual. Grupos `all`/`any` anidados se editan solo en YAML.
+
+## Editor YAML
+
+![Pestaña YAML con el contrato canónico](/console/policy-yaml.png)
+
+Úsalo para pegar políticas de `policies/*.yaml` o para diff. El contrato canónico de la demo:
+
+```yaml
+id: invoice-cancel-production
+version: 4
+priority: 100
+match:
+  action: invoice.cancel
+  resource_type: invoice
+rules:
+  - name: never-cancel-tax-reported
+    when:
+      field: resource.attributes.reportedToTaxAuthority
+      op: eq
+      value: true
+    effect: DENY
+  - name: high-value-approval
+    when:
+      field: resource.attributes.amount
+      op: gt
+      value: 10000000
+    effect: REQUIRE_APPROVAL
+  - name: allow-draft-low-risk
+    when:
+      all:
+        - { field: resource.attributes.status, op: eq, value: draft }
+        - { field: resource.attributes.amount, op: lte, value: 10000000 }
+    effect: ALLOW
+fallback: DENY
+```
+
+<Aside type="caution">
+Publicar es inmediato. No hay “schedule”. Prueba primero. Precedencia: DENY explícito > REQUIRE_APPROVAL > ALLOW > fallback DENY.
+</Aside>
+
+Referencia completa: [YAML de políticas](/reference/policy-yaml/).
+
+## Casos de regresión guardados
+
+Selecciona una decisión esperada y guarda un caso con nombre en Simulator. **Compare saved cases** evalúa el candidato del editor y la versión publicada sin crear decisiones de autorización. Publicar una versión de producto requiere al menos un caso y que todos pasen contra esa versión exacta. Las versiones ya publicadas permanecen activas hasta una publicación exitosa.
+
+El YAML publicado sirve de referencia. El editor marca cambios sin guardar y solicita confirmación antes de descartar comentarios al pasar al modo Visual.

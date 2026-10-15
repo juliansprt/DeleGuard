@@ -1,0 +1,135 @@
+---
+title: Integrate into existing apps
+description: Where to hook Deleguard into an agent, worker, or tool server that is already in production.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+This page is “how do I add it **without rewriting the product**”. The change is small: a checkpoint in front of every side-effect.
+
+If the product is a **tool-calling chat**, the concrete walkthrough (OpenAI, Claude, Semantic Kernel) is [Integrate with an LLM](/en/integrate/with-llm/).
+
+## 1. Inventory actions
+
+List operations an agent **should not be able to do alone**:
+
+- cancel / issue / pay
+- transfer funds
+- delete or export PII
+- deploy or rotate secrets
+
+Each needs a **stable name** (`invoice.cancel`) declared in [Actions](/en/console/actions/) and a published policy. Actions that do not exist are denied.
+
+## 2. Pick the hook
+
+| If your code… | Hook here |
+| --- | --- |
+| Has a tool `switch` / dictionary | First line of each case, **before** the business service |
+| Uses LangChain / Semantic Kernel / a `ToolExecutor` | A decorator/middleware around invoke |
+| Exposes MCP `tools/call` | Adapter that authorizes then `forward`s |
+| Is a worker that already validates an internal command | Same wrapper; the agent only enqueues, the worker authorizes |
+
+<Aside type="caution">
+Do not authorize “at the start of the chat”. Authorize **the concrete action** with **current** resource attributes (amount, status, tax-reported). That limits TOCTOU.
+</Aside>
+
+## 3. Map your domain to the contract
+
+The HTTP boundary is **snake_case**. Real demo payload:
+
+```json
+{
+  "agent": { "id": "invoice-agent", "environment": "production" },
+  "actor": { "id": "usr_481", "type": "human" },
+  "action": "invoice.cancel",
+  "resource": {
+    "type": "invoice",
+    "id": "FAC-8392",
+    "attributes": {
+      "amount": 35000000,
+      "currency": "COP",
+      "status": "issued",
+      "reportedToTaxAuthority": false
+    }
+  },
+  "context": { "reason": "duplicate invoice" }
+}
+```
+
+- `agent.id` must match the console **External id** (`invoice-agent`).
+- `resource.attributes` are the fields YAML reads (`resource.attributes.amount`, …).
+- `Idempotency-Key` is required (8–128 characters). Retry with the **same** key; do not mint a new one for the same attempt.
+
+## 4. Interceptor pattern (level B)
+
+<Tabs>
+<TabItem label="C#">
+
+```csharp
+public async Task<T> ExecuteAsync<T>(
+    string action,
+    ResourceSnapshot resource,
+    Func<Task<T>> execute,
+    CancellationToken ct)
+{
+    var decision = await _deleguard.AuthorizeAsync(action, resource, ct);
+
+    switch (decision.Decision)
+    {
+        case "DENY":
+            throw new ActionDeniedException(decision.Reason);
+        case "REQUIRE_APPROVAL":
+            throw new ApprovalRequiredException(decision.ApprovalId);
+        case "ALLOW":
+            var result = await execute();
+            await _deleguard.ReportExecutionAsync(decision.DecisionId, "SUCCESS", ct);
+            return result;
+        default:
+            throw new InvalidOperationException(decision.Decision);
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+async def execute(action, resource, fn):
+    decision = await deleguard.authorize(action, resource)
+    kind = decision["decision"]
+    if kind == "DENY":
+        raise ActionDenied(decision.get("reason"))
+    if kind == "REQUIRE_APPROVAL":
+        raise ApprovalRequired(decision["approval_id"])
+    result = await fn()
+    await deleguard.report_execution(decision["decision_id"], "SUCCESS")
+    return result
+```
+
+</TabItem>
+</Tabs>
+
+Every business handler goes through this function. A new tool cannot “forget” Deleguard.
+
+## 5. MCP (level C, optional)
+
+```text
+tools/call
+  → map (server, tool, args) → action + resource
+  → POST /v1/authorize
+  → if ALLOW: forward to the MCP server
+  → POST /v1/executions
+```
+
+Do not make MCP mandatory. If you already call an internal service, level A or B is enough.
+
+## 6. Integration PR checklist
+
+- [ ] Every sensitive tool has a registered `action` and a **Published** policy.
+- [ ] Authorize uses the `dgk_…` API key, not the console token.
+- [ ] HTTP 200 DENY is not treated as a network failure.
+- [ ] 503 is treated as **do not execute** (fail closed).
+- [ ] After ALLOW, evidence is reported.
+- [ ] Humans approve in the console; the agent does not self-approve.
+
+Wiring: [HTTP](/en/integrate/http/) · [Python](/en/integrate/python/) · [.NET](/en/integrate/dotnet/) · [errors](/en/integrate/errors/).

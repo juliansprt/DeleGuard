@@ -1,0 +1,23 @@
+id: admin-environment-get
+version: 1
+priority: 80
+match:
+  action: admin.environment.get
+  resource_type: environment
+rules:
+  - name: deny-foreign-agent
+    when:
+      field: agent.id
+      op: ne
+      value: admin-mcp
+    effect: DENY
+    reason: Administration actions are bound to the admin-mcp agent
+  - name: allow-entitled-roles
+    when:
+      any:
+        - { field: actor.roles, op: contains, value: org-admin }
+        - { field: actor.roles, op: contains, value: operator }
+        - { field: actor.roles, op: contains, value: auditor }
+        - { field: actor.roles, op: contains, value: billing-manager }
+    effect: ALLOW
+fallback: DENY

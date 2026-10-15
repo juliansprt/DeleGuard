@@ -1,0 +1,14 @@
+@using Deleguard.Api
+@using Deleguard.Api.Http
+@using Deleguard.Api.Pages
+@using Deleguard.Domain.Common
+@using Deleguard.Infrastructure.Identity
+@namespace Deleguard.Api.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@inject ConsoleChrome Chrome
+@inject Microsoft.Extensions.Options.IOptions<OidcOptions> Oidc
+
+@using Deleguard.Api.Localization
+@inject UiText T
+
+@addTagHelper *, Deleguard.Api

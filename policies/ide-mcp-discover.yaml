@@ -1,0 +1,11 @@
+id: "ide-mcp-discover"
+version: 1
+priority: 100
+match:
+  action: "mcp.discover"
+  resource_type: "mcp"
+rules:
+  - name: "deny-mcp-discovery"
+    effect: "DENY"
+    reason: "IDE MCP discovery requires an administrator-authored allow policy."
+fallback: "DENY"

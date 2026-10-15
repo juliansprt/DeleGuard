@@ -1,0 +1,129 @@
+@page "/settings"
+@model Deleguard.Api.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "Organización";
+    ViewData["Nav"] = "settings";
+}
+
+<partial name="_PageHeader" model='("Organización", "Gestiona tu espacio de trabajo y las aplicaciones que lo componen.")' />
+
+@if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+@if (Model.Organization is not null)
+{
+    <div class="card">
+        <div class="card-head">
+            <h2>@T["Profile"]</h2>
+        </div>
+        <p class="muted">@T["Id"] <code>@Model.Organization.Id</code></p>
+        @if (Model.CanRename)
+        {
+            <form method="post" asp-page-handler="Rename" class="stack">
+                <p>
+                    <label for="OrganizationName">@T["Name"]</label>
+                    <input asp-for="OrganizationName" id="OrganizationName" maxlength="80" autocomplete="organization" />
+                    <span class="hint">@T["3–80 characters."]</span>
+                </p>
+                <button type="submit">@T["Save name"]</button>
+            </form>
+        }
+        else
+        {
+            <p><strong>@Model.Organization.Name</strong></p>
+        }
+    </div>
+}
+
+@if (Model.CanWriteApps)
+{
+    <details class="card create-panel" id="add-application" @(Model.IsError || Model.Applications.Count == 0 ? "open" : null)>
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Add application"]</summary>
+        <div class="create-panel-body">
+            <form method="post" asp-page-handler="CreateApplication" class="stack">
+                <p>
+                    <label for="ApplicationName">@T["Name"]</label>
+                    <input asp-for="ApplicationName" id="ApplicationName" maxlength="80" />
+                </p>
+                <p>
+                    <label for="ApplicationSlug">@T["Id"]</label>
+                    <input asp-for="ApplicationSlug" id="ApplicationSlug" placeholder="billing" autocomplete="off" spellcheck="false" />
+                    <span class="hint">@T["Lowercase slug. Each application has its own production environment."]</span>
+                </p>
+                <button type="submit">@T["Create application"]</button>
+            </form>
+        </div>
+    </details>
+}
+
+<div class="card">
+    <div class="card-head">
+        <h2>@T["Applications"]</h2>
+    </div>
+    @if (Model.Applications.Count == 0)
+    {
+        <partial name="_EmptyState" model='new EmptyStateModel("No applications", "Create an application to group agents.")' />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>@T["Name"]</th>
+                        <th>@T["Id"]</th>
+                        <th>@T["Agents"]</th>
+                        @if (Model.CanWriteApps)
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var app in Model.Applications)
+                {
+                    <tr>
+                        @if (Model.CanWriteApps)
+                        {
+                            <td colspan="2">
+                                <form method="post" asp-page-handler="UpdateApplication" class="row" style="gap:0.4rem;align-items:center;margin:0;flex-wrap:nowrap">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <label class="sr-only" for="name-@app.Id">@T["Name for"] @app.Slug</label>
+                                    <input id="name-@app.Id" name="updatedName" value="@app.Name" />
+                                    <label class="sr-only" for="slug-@app.Id">@T["Slug for"] @app.Name</label>
+                                    <input id="slug-@app.Id" name="updatedSlug" value="@app.Slug" spellcheck="false" />
+                                    <button type="submit" class="ghost compact">@T["Save"]</button>
+                                </form>
+                                <div class="muted id-sub">@app.Id</div>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@app.Name</td>
+                            <td><code>@app.Slug</code></td>
+                        }
+                        <td>@app.AgentCount</td>
+                        @if (Model.CanWriteApps)
+                        {
+                            <td>
+                                <form method="post" asp-page-handler="DeleteApplication" data-confirm="Delete this application? Environments, actions, and policies in it are removed.">
+                                    <input type="hidden" name="applicationId" value="@app.Id" />
+                                    <button type="submit" class="ghost compact">@T["Delete"]</button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}

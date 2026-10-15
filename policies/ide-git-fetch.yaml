@@ -1,0 +1,11 @@
+id: "ide-git-fetch"
+version: 1
+priority: 100
+match:
+  action: "git.fetch"
+  resource_type: "git"
+rules:
+  - name: "deny-git-fetch"
+    effect: "DENY"
+    reason: "IDE Git fetch requires an administrator-authored allow policy."
+fallback: "DENY"

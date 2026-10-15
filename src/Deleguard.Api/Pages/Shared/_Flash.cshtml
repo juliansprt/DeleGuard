@@ -1,0 +1,6 @@
+@model Deleguard.Api.Pages.FlashModel
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    var klass = Model.Secret ? "flash flash-secret" : Model.IsError ? "flash flash-err" : "flash flash-ok";
+    <div class="@klass" role="@(Model.IsError ? "alert" : "status")">@T.Message(Model.Message)</div>
+}

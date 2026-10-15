@@ -1,0 +1,43 @@
+---
+title: Errores y reintentos
+description: Cómo distinguir DENY (200), fallos de auth, conflictos de idempotencia y 503 fail-closed.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El error más caro es tratar un `DENY` como “la API falló” y **reintentar la tool**. No lo hagas.
+
+## Tabla de estados
+
+| HTTP | `error` | Qué significa | Qué hace el agente |
+| --- | --- | --- | --- |
+| 200 | — | Decisión evaluada (`ALLOW` / `DENY` / `REQUIRE_APPROVAL`) | Sigue `decision`. |
+| 400 | `invalid_request` | Esquema o falta `Idempotency-Key` | Corrige el request; no ejecutes. |
+| 401 | `invalid_agent_credential` / `unauthorized` | Key mala o tipo de credencial incorrecto | No ejecutes. Revisa `dgk_` vs `dgc_`. |
+| 401 | `console_authentication_required` | Llamaste un endpoint de consola sin token humano | Usa `dgc_` / cookie, no la key de agente. |
+| 404 | `not_found` | Decisión/aprobación/política inexistente en el tenant | No ejecutes. |
+| 409 | `conflict` | Idempotency-Key reutilizada con otro cuerpo, o estado incompatible | No asumas ALLOW. Relee la decisión original. |
+| 503 | `authorization_unavailable` | Postgres o PDP caídos | **Fail closed**: no ejecutes. Reintenta authorize, nunca la tool. |
+| 500 | `internal_error` | Fallo inesperado | Fail closed. |
+
+<Aside type="danger" title="Fail closed">
+503 y 5xx **no** son DENY suaves ni ALLOW. Si no hay decisión persistida, la acción no ocurre.
+</Aside>
+
+## Idempotencia
+
+- Genera un `Idempotency-Key` **por intento de acción** (p. ej. un UUID ligado a `invoiceId` + `intentId`).
+- Si el HTTP se corta, **reenvía el mismo** header y el mismo cuerpo.
+- Cambiar el cuerpo con la misma clave produce **409**.
+
+## Timeouts
+
+Autoriza con un timeout corto (1–3 s). Si vence:
+
+1. No ejecutes la tool.
+2. Reintenta authorize con la misma idempotency key.
+3. Si Deleguard sigue caído, aborta el turno del agente.
+
+## Aprobaciones caducadas
+
+Si el humano no responde a tiempo, el worker marca la aprobación expirada. Un `GET /v1/decisions/{id}` posterior no convierte eso en ALLOW. El agente debe volver a pedir authorize (nueva clave) si el negocio lo permite.

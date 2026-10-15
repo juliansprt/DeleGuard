@@ -1,0 +1,178 @@
+@page "/playground"
+@model Deleguard.Api.Pages.Playground.IndexModel
+@{
+    ViewData["Title"] = "Probar una acción";
+    ViewData["Nav"] = "playground";
+    var result = Model.Result;
+    var decisionClass = result is null ? "neutral" : ConsoleFormatting.DecisionBadge(result.Decision.Decision);
+}
+
+<partial name="_PageHeader" model='("Probar una acción", "Elige un agente y comprueba sus reglas. No necesitas pegar claves ni escribir código.")' />
+<partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+@if (Model.Result is not null && HttpContext.GetConsoleUser()?.HasPermission("audit.read") == true) { <p><a class="button ghost" href="/audit/decisions/@Model.Result.Decision.DecisionId">@T["Open decision record"]</a></p> }
+@if (Model.IsError && HttpContext.GetConsoleUser()?.HasPermission("actions.read") == true && HttpContext.GetConsoleUser()?.HasPermission("policies.read") == true && HttpContext.GetConsoleUser()?.HasPermission("agents.read") == true) { <p><a href="/actions/coverage?AgentId=@Model.AgentId">@T["Check this agent's action and policy assignments"]</a></p> }
+@if (Model.Agents.Count > 0 && Model.Actions.Count > 0 && Model.Policies.Count == 0)
+{
+    <div class="flash" role="status">@T["No published product policies in this tenant. Authorize will DENY until you"] <a href="/policies">@T["publish a policy"]</a>.</div>
+}
+
+@if (Model.Agents.Count == 0 || Model.Actions.Count == 0)
+{
+    <div class="card">
+        @if (Model.Agents.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No agents in this tenant", "Register an agent. Playground binds it for this request so you can try authorize without storing a production secret.", "/agents", "Open Agents")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No product actions", "Declare an action, then publish a policy. Unknown actions are denied.", "/actions", "Open Actions")' />
+        }
+    </div>
+}
+else
+{
+    <div class="split">
+        <div class="card">
+            <h2>@T["Request"]</h2>
+            <p class="muted">@T["These lists come from your tenant. Authorize uses the published policy for the selected action — drafts are ignored. The console session never stands in for the agent."]</p>
+            <form method="post" asp-page-handler="Authorize" class="stack" id="playground-form" data-playground-form>
+                <p>
+                    <label for="AgentId">@T["Agent"]</label>
+                    <select asp-for="AgentId" id="AgentId" data-playground-agent>
+                        @foreach (var agent in Model.Agents)
+                        {
+                            <option value="@agent.Id"
+                                    data-external-id="@agent.ExternalId"
+                                    data-environment="@agent.EnvironmentName"
+                                    data-key-prefix="@agent.ActiveKeyPrefix">@agent.DisplayName · @agent.EnvironmentName · @(agent.ActiveKeyPrefix ?? T["no key"])</option>
+                        }
+                    </select>
+                    <span class="hint">@T["Playground binds this agent for Authorize. Production keys are not rotated or shown."]</span>
+                </p>
+                <p>
+                    <label for="ActionName">@T["Action"]</label>
+                    <select asp-for="ActionName" id="ActionName" data-playground-action>
+                        @foreach (var action in Model.Actions)
+                        {
+                            var hasPolicy = Model.Policies.Any(policy =>
+                                string.Equals(policy.Action, action.Name, StringComparison.Ordinal)
+                                && string.Equals(policy.ResourceType, action.ResourceType, StringComparison.Ordinal));
+                            <option value="@action.Name" data-resource-type="@action.ResourceType">@action.Name · @action.ResourceType@(hasPolicy ? "" : " · no published policy")</option>
+                        }
+                    </select>
+                    <span class="hint" data-policy-hint></span>
+                </p>
+                <div class="approval-fields">
+                    <p>
+                        <label for="ResourceType">@T["Resource type"]</label>
+                        <input asp-for="ResourceType" id="ResourceType" autocomplete="off" spellcheck="false" data-playground-resource-type />
+                        <span class="hint">@T["Must match the published policy"] <code>match.resource_type</code>.</span>
+                    </p>
+                <p>
+                    <label for="ResourceId">@T["Resource id"]</label>
+                    <input asp-for="ResourceId" id="ResourceId" autocomplete="off" spellcheck="false" data-playground-resource-id />
+                </p>
+                </div>
+                <p class="row fixture-presets" data-policy-scenarios hidden></p>
+                <p>
+                    <label for="AttributesJson">@T["Resource attributes JSON"]</label>
+                    <textarea asp-for="AttributesJson" id="AttributesJson" class="short" spellcheck="false" data-playground-attributes></textarea>
+                    <span class="hint">@T["Filled from the published policy rules for this action. Edit if you want a different case."]</span>
+                </p>
+                <details class="create-panel" @(string.IsNullOrWhiteSpace(Model.AgentApiKey) ? null : "open")>
+                    <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Use a specific agent key"]</summary>
+                    <div class="create-panel-body">
+                        <p>
+                            <label for="agent-key">@T["Agent API key"]</label>
+                            <input id="agent-key" asp-for="AgentApiKey" type="password" autocomplete="off" spellcheck="false" data-playground-key />
+                            <span class="hint" data-key-hint>@T["Optional. Paste a production"] <code>dgk_</code> @T["to authorize as that credential instead of the selected agent binding."]</span>
+                            <span class="hint err" data-prefix-warning hidden>@T["This key does not start with the selected agent’s prefix."]</span>
+                        </p>
+                    </div>
+                </details>
+                <p class="row">
+                    <button type="submit">@T["Authorize"]</button>
+                    <button type="button" class="ghost" data-clear-playground>@T["Clear saved"]</button>
+                </p>
+            </form>
+        </div>
+        <div class="card">
+            <h2>@T["Decision"]</h2>
+            @if (result is null)
+            {
+                <p class="muted">@T["Run authorize to write ALLOW, DENY, or REQUIRE_APPROVAL on the same path as"] <code>POST /v1/authorize</code>.</p>
+            }
+            else
+            {
+                <p class="queue-kicker">
+                    <span class="badge @decisionClass">@result.Decision.Decision</span>
+                    <span class="muted">@result.AgentExternalId · @result.EnvironmentName</span>
+                </p>
+                <dl class="facts" style="margin-top:1rem">
+                    <dt>@T["Reason"]</dt>
+                    <dd>@(result.Decision.Reason ?? "—")</dd>
+                    <dt>@T["Policy"]</dt>
+                    <dd>
+                        @{
+                            var matchedPolicy = result.Decision.PolicyId is null
+                                ? null
+                                : Model.Policies.FirstOrDefault(policy =>
+                                    string.Equals(policy.Slug, result.Decision.PolicyId, StringComparison.Ordinal)
+                                    || string.Equals(policy.Id, result.Decision.PolicyId, StringComparison.Ordinal));
+                        }
+                        @if (matchedPolicy is not null)
+                        {
+                            <a href="/policies/@matchedPolicy.Id">@matchedPolicy.Slug v@(result.Decision.PolicyVersion)</a>
+                        }
+                        else if (string.IsNullOrWhiteSpace(result.Decision.PolicyId))
+                        {
+                            <text>—</text>
+                        }
+                        else
+                        {
+                            @($"{result.Decision.PolicyId} v{result.Decision.PolicyVersion}")
+                        }
+                    </dd>
+                    <dt>@T["Decision"]</dt>
+                    <dd><code>@result.Decision.DecisionId</code></dd>
+                    @if (!string.IsNullOrWhiteSpace(result.Decision.Permit))
+                    {
+                        <dt>@T["Permit"]</dt>
+                        <dd class="hash">@ConsoleFormatting.ShortId(result.Decision.Permit)</dd>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(result.Decision.ApprovalId))
+                    {
+                        <dt>@T["Approval"]</dt>
+                        <dd><a href="/approvals/@result.Decision.ApprovalId">@result.Decision.ApprovalId</a></dd>
+                    }
+                </dl>
+                <div class="row" style="margin-top:1rem">
+                    @if (string.Equals(result.Decision.Decision, "ALLOW", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(result.Decision.Permit) && !result.EvidenceReported)
+                    {
+                        <form method="post" asp-page-handler="ReportExecution">
+                            <input type="hidden" name="AgentApiKey" data-agent-key="true" value="@Model.AgentApiKey" />
+                            <input type="hidden" name="AgentId" value="@Model.AgentId" />
+                            <input type="hidden" name="ActionName" value="@Model.ActionName" />
+                            <input type="hidden" name="ResourceType" value="@Model.ResourceType" />
+                            <input type="hidden" name="ResourceId" value="@Model.ResourceId" />
+                            <input type="hidden" name="AttributesJson" value="@Model.AttributesJson" />
+                            <input type="hidden" name="DecisionId" value="@result.Decision.DecisionId" />
+                            <button type="submit" class="ghost">@T["Report execution"]</button>
+                        </form>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(result.Decision.ApprovalId))
+                    {
+                        <a class="button ghost" href="/approvals/@result.Decision.ApprovalId">@T["Open approval"]</a>
+                    }
+                    <a class="button ghost" href="/audit">@T["Open audit"]</a>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<script type="application/json" id="playground-catalog">@Html.Raw(Model.CatalogJson)</script>
+
+@section Scripts {
+    <script src="~/js/playground.js" asp-append-version="true"></script>
+}

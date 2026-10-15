@@ -1,0 +1,40 @@
+---
+title: Actions
+description: Declare stable named operations and risk. Registering does not authorize; unknown actions are denied.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Actions** (`/actions`) declares what an agent may *attempt*. The engine does not guess names: if `action` does not exist, the result is DENY `"Unknown action."`. Registering the name **does not** authorize it: without a published policy, authorize still DENYs (`"No applicable policy."`).
+
+The console splits two catalogs:
+
+- **Protected** — product operations (`invoice.cancel`, `email.send`, …).
+- **Administration** — `admin.*` names bound to the `admin-mcp` agent. A product agent cannot call them.
+
+![Registered actions with invoice.cancel HIGH and Add action form](/console/actions.png)
+
+<Steps>
+
+1. **Name** — must match the agent payload character-for-character (`invoice.cancel`). Lowercase; no spaces or Unicode lookalikes.
+2. **Resource type** — `invoice`, `payment`, … Must align with the policy `match.resource_type`.
+3. **Risk** — catalog metadata, not a PDP switch. `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`. The published policy decides ALLOW / DENY / REQUIRE_APPROVAL. HIGH and CRITICAL *typically* require approval in YAML.
+4. **Create action**, then **Create policy** (the banner links it). From there, **Open Playground** exercises authorize with that action.
+
+</Steps>
+
+There is no edit or delete in the MVP: pick the name carefully. A published policy for `invoice.cancel` will not match `Invoice.Cancel`.
+
+The **Policy** column shows Published, Draft, or **No policy**. Without a published policy the name exists, but authorize still denies.
+
+**Guard MCP** bindings map a downstream `mcp_server` + `mcp_tool` to this action. The client runs `src/Deleguard.McpGuard`; Cursor must not also register the downstream MCP. See [Guard MCP](/en/integrate/mcp-guard/).
+
+<Aside type="tip">
+Register the action **before** publishing the policy and **before** the agent calls authorize. The Overview checklist counts product actions only (it ignores `admin.*`).
+</Aside>
+
+## Coverage
+
+**View agent → action → policy coverage** opens a matrix with configuration gaps. Ready to evaluate means the assignment exists; the request still has to pass the policy.
+
+![Coverage](/console/coverage.png)

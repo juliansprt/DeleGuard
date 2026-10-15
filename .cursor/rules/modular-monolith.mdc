@@ -1,0 +1,13 @@
+---
+description: Modular monolith boundaries for Deleguard.
+alwaysApply: true
+---
+
+# Modular monolith
+
+Logical modules: Identity, Authorization, Policies, Approvals, Evidence, Audit, Notifications.
+
+- Application handlers talk across modules only through ports in `Deleguard.Application.Abstractions`.
+- Do not query another module's tables from a handler. Add a port and an infrastructure adapter.
+- One deployable API plus one worker. Do not split microservices without an operational reason.
+- Keep the product policy YAML independent of any engine (no raw Rego/Cedar as the customer contract).

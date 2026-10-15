@@ -1,0 +1,31 @@
+---
+title: Configuration
+description: Environment variables, appsettings, and secrets that must change outside local.
+---
+
+Canonical table. Operational detail in [Configure the environment](/en/start/environment/).
+
+## API and worker
+
+| Key | Local | Production |
+| --- | --- | --- |
+| `ConnectionStrings__Postgres` | `Host=localhost;Port=5432;Database=deleguard;Username=deleguard;Password=deleguard` | Provider string, TLS, least-privilege user |
+| `Redis__ConnectionString` | `localhost:6379` | Optional; if missing, the API is still correct |
+| `Permits__SigningKey` | `deleguard-dev-permit-hmac-key-change-in-prod-32` | Secret ≥ 32 chars, controlled rotation |
+| `Permits__Issuer` | `deleguard` | Stable id for your deployment |
+| `DemoAuth__ApiKeyPepper` | `deleguard-dev-pepper` | KMS pepper; rotating means re-hashing keys |
+| `DemoAuth__ConsoleToken` | `dgc_demo_console_local_dev_only` | Replace with SSO |
+| `DemoAuth__DemoOrganizationId` | `org_demo` | Do not use this id in prod |
+| `DELEGUARD_ENTRYPOINT` | — | `api` or `worker` in the same image |
+| `Docs__PublicUrl` | `http://localhost:4321` | Public docs origin for this environment |
+| `ASPNETCORE_ENVIRONMENT` | `Development` | `Production` |
+
+## Clients
+
+| Variable | Example default |
+| --- | --- |
+| `DELEGUARD_URL` | `http://localhost:8082` in Compose (`http://127.0.0.1:5080` on the host) |
+| `DELEGUARD_TOKEN` | `dgk_demo_invoice_agent_local_dev_only` |
+| `DELEGUARD_CONSOLE` | `dgc_demo_console_local_dev_only` |
+
+Files: `src/Deleguard.Api/appsettings.json`, `src/Deleguard.Workers/appsettings.json`, `deploy/docker-compose.yml`.

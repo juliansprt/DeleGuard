@@ -1,0 +1,1 @@
+[{"name":"commit-is-explicitly-denied","expected":"DENY","expected_rule":"deny-git-commit","request":{"action":"git.commit","resource_type":"git","resource_id":"head","attributes":{"project_id":"ide-demo"}}},{"name":"wrong-action-has-no-applicable-policy","expected":"DENY","request":{"action":"git.status","resource_type":"git","resource_id":"head","attributes":{}}}]

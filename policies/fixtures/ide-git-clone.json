@@ -1,0 +1,1 @@
+[{"name":"clone-is-explicitly-denied","expected":"DENY","expected_rule":"deny-git-clone","request":{"action":"git.clone","resource_type":"git","resource_id":"origin","attributes":{"project_id":"ide-demo"}}},{"name":"wrong-resource-has-no-applicable-policy","expected":"DENY","request":{"action":"git.clone","resource_type":"network","resource_id":"origin","attributes":{}}}]

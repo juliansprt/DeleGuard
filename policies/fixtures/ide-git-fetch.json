@@ -1,0 +1,1 @@
+[{"name":"fetch-is-explicitly-denied","expected":"DENY","expected_rule":"deny-git-fetch","request":{"action":"git.fetch","resource_type":"git","resource_id":"origin","attributes":{"project_id":"ide-demo"}}},{"name":"wrong-action-has-no-applicable-policy","expected":"DENY","request":{"action":"git.pull","resource_type":"git","resource_id":"origin","attributes":{}}}]

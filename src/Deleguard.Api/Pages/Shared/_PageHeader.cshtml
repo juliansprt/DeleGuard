@@ -1,0 +1,6 @@
+@model (string Title, string Subtitle)
+@{ var guide=ConsoleGuide.Find(ViewData["Nav"] as string); }
+<header class="page-header"><div><h1>@T[Model.Title]</h1><p class="lede">@T[Model.Subtitle]</p></div>@if(guide is not null){<a class="button ghost compact" href="#module-help">@T["Cómo usar este módulo"]</a>}</header>
+@if(guide is not null){
+<details id="module-help" class="module-help"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]"><span aria-hidden="true">✧</span> @T[guide.Purpose]</summary><div class="module-help-body"><ol class="plain-steps">@foreach(var step in guide.Steps){<li>@T[step]</li>}</ol><p class="quiet-note">@T[guide.Outcome]</p><a href="/start#modules">@T["Ver la guía de toda la aplicación →"]</a></div></details>
+}

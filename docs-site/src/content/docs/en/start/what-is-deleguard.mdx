@@ -1,0 +1,55 @@
+---
+title: What is Deleguard
+description: Deleguard authorizes AI-agent actions with deterministic policy, human approval, and evidence.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Deleguard is a **policy decision + approval + evidence** platform. An agent (a script, an invoice bot, an MCP server) calls `POST /v1/authorize` **before** executing a sensitive action and receives one of three responses:
+
+- `ALLOW` — policy authorizes; Deleguard issues a short-lived permit.
+- `DENY` — the action must not run.
+- `REQUIRE_APPROVAL` — a human must review canonical facts and approve once.
+
+```text
+custom agent → POST /v1/authorize → ALLOW | DENY | REQUIRE_APPROVAL
+                                → approval → permit → evidence → audit
+```
+
+## What it is not
+
+Deleguard does not route models, store conversation memory, or observe prompts. The model is **never** on the ALLOW/DENY path. If the PDP or database fails, the API returns **503** and never fabricates ALLOW.
+
+## Minimum vocabulary
+
+| Term | Meaning |
+| --- | --- |
+| **Agent** | Non-human identity (`invoice-agent`) with an API key `dgk_…`. |
+| **Actor** | Human or service the agent acts on behalf of. |
+| **Action** | Stable name (`invoice.cancel`). Unknown actions are denied. |
+| **Resource** | Object + attributes (`amount`, `status`, `reportedToTaxAuthority`). |
+| **YAML policy** | Customer contract. Only the **Published** version decides. |
+| **Permit** | Signed token proving a bounded ALLOW (or approval). |
+| **Evidence** | `POST /v1/executions` after execution, tied to `decision_id`. |
+
+## Credentials that do not mix
+
+| Credential | Prefix | Used for | Not used for |
+| --- | --- | --- | --- |
+| Agent API key | `dgk_` | `/v1/authorize`, `/v1/decisions`, `/v1/executions` | Approving, opening the console |
+| Console token | `dgc_` | Razor console, `/v1/approvals`, admin, audit | Authorizing as an agent |
+
+<Aside type="caution" title="Invariant">
+Agent keys cannot approve. Human/console credentials cannot call `/v1/authorize` as an agent.
+</Aside>
+
+## Demo journey
+
+The repository vertical slice is **cancel an invoice** (`invoice.cancel`):
+
+1. Register agent, action, and policy (seeded locally).
+2. The agent asks for authorization with resource attributes.
+3. If needed, a human sees canonical facts in **Approvals** — never model prose.
+4. After execution, report evidence; **Audit** chains the event.
+
+Next: [Quick start](/en/start/quickstart/) or [integrate with an LLM](/en/integrate/with-llm/).

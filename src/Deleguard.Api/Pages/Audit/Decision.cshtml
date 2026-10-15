@@ -1,0 +1,25 @@
+@page "/audit/decisions/{id}"
+@model Deleguard.Api.Pages.Audit.DecisionModel
+@{ ViewData["Title"] = "Decision record"; ViewData["Nav"] = "audit"; var d = Model.Case.Decision; var missingPolicy = d.Reason == "No applicable policy."; }
+<header class="page-header"><div><p class="crumbs"><a href="/audit/activity">@T["Activity"]</a> @T["/ Decision record"]</p><h1>@d.Action · @d.Resource</h1><p class="lede">@d.Reason</p></div><a class="button ghost" href="?handler=Export">@T["Export record"]</a></header>
+@if (missingPolicy)
+{
+<section class="card" aria-labelledby="missing-policy-title"><h2 id="missing-policy-title">@T["Falta una política publicada aplicable"]</h2><p>@T["En el momento de esta solicitud, DeleGuard no encontró una regla publicada para esta acción, tipo de recurso y agente dentro de su aplicación. Los borradores no autorizan operaciones. Marcar el riesgo como High o una carpeta como protegida no crea una aprobación."]</p><p>@T["Publica una regla probada y comprueba su asignación al agente. Después solicita una nueva operación desde el IDE. Este registro histórico seguirá en DENY: no hay una aprobación pendiente que puedas aceptar aquí."]</p>
+@if (HttpContext.GetConsoleUser()?.HasPermission("policies.read") == true) { <p><a href="/policies">@T["Revisar publicación y asignación de políticas"]</a> · <a href="/ide#policies">@T["Volver a IDE Control"]</a></p> }
+</section>
+}
+<ol class="decision-timeline">
+<li class="card"><h2>@T["1 · Request"]</h2><dl class="facts"><dt>@T["Agent"]</dt><dd>@d.Agent</dd><dt>@T["Resource"]</dt><dd>@d.Resource</dd><dt>Actor</dt><dd>@(Model.Case.ActorId ?? T["Not provided"])</dd><dt>@T["Received (UTC)"]</dt><dd>@d.CreatedAt.ToString("u")</dd></dl>
+@if (HttpContext.GetConsoleUser()?.HasPermission("agents.read") == true) { <a href="/agents/@d.AgentId">@T["Open agent"]</a> }</li>
+<li class="card"><h2>@T["2 · Policy and decision"]</h2><p>@T["Initial decision:"] @(Model.Case.InitialDecision ?? T["Not recorded"]) → <span class="badge @ConsoleFormatting.DecisionBadge(d.Decision)">@d.Decision</span> @T["· current decision"]</p><p>@d.Reason</p><p>@T["Rule:"] @(Model.Case.MatchedRule ?? T["No rule recorded"]) @T["· Version:"] @(Model.Case.PolicyVersion?.ToString() ?? "—")</p>
+@if (Model.Case.PolicyDefinitionId is not null && HttpContext.GetConsoleUser()?.HasPermission("policies.read") == true) { <a href="/policies/@Model.Case.PolicyDefinitionId">@T["Open policy"]</a> }
+@if (HttpContext.GetConsoleUser()?.HasPermission("actions.read") == true) { <p><a href="/actions?q=@Uri.EscapeDataString(d.Action)">@T["Review action assignments"]</a></p> }</li>
+<li class="card"><h2>@T["3 · Human approval"]</h2>@if (Model.Case.Approvals.Count == 0) { <p>@T["No approval requested."]</p> }
+@foreach (var a in Model.Case.Approvals) { <p>@a.Status @T["· expires"] @a.ExpiresAt.ToString("u") · @(a.ResolvedBy ?? "Unresolved")</p> @if (HttpContext.GetConsoleUser()?.HasPermission("approvals.read") == true) { <a href="/approvals/@a.Id">@T["Open approval"]</a> } }</li>
+<li class="card"><h2>@T["4 · Execution permit"]</h2>@if (Model.Case.Permits.Count == 0) { <p>@T["No permit issued."]</p> }
+@foreach (var p in Model.Case.Permits) { <p><code>@p.Id</code> @T["· expires"] @p.ExpiresAt.ToString("u") · @(p.RevokedAt is not null ? T["Revoked"] : p.ExpiresAt <= DateTimeOffset.UtcNow ? T["Expired"] : T["Active"])</p> }</li>
+<li class="card"><h2>@T["5 · Reported result"]</h2><p class="muted">@T["Reported by the integration; not independently verified."]</p>
+@if (Model.Case.Evidence.Count == 0) { <p>@T["No execution evidence reported."]</p> }
+@foreach (var e in Model.Case.Evidence) { <p><strong>@e.Status</strong> · @e.CreatedAt.ToString("u") · @(e.ProviderReference ?? T["No provider reference"])</p> }
+@if (d.RequestedModel is not null) { <p>@d.RequestedModel → @(d.UsedModel ?? T["No model reported"]) · @d.RouteReason · @(d.CostUsd?.ToString("0.######") ?? "—") USD</p> }</li>
+</ol><details class="card"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Identifiers"]</summary><p class="hash">@T["Decision:"] @d.Id<br />@T["Snapshot:"] @Model.Case.SnapshotHash</p></details>

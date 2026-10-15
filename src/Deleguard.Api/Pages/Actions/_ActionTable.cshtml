@@ -1,0 +1,128 @@
+@model Deleguard.Api.Pages.Actions.IndexModel
+@{
+    var risks = new[] { "LOW", "MEDIUM", "HIGH", "CRITICAL" };
+}
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>@T["Name"]</th>
+                <th>@T["Resource"]</th>
+                <th>@T["Risk"]</th>
+                <th>@T["Policy"]</th>
+                <th>@T["Agents"]</th>
+                <th>@T["Guard tool"]</th>
+                @if (Model.CanWrite && !Model.IsAdminScope)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var action in Model.Actions)
+        {
+            <tr>
+                <td>
+                    <div class="row" style="gap:0.4rem;align-items:center">
+                        <code>@action.Name</code>
+                        <button type="button" class="ghost compact" data-copy="@action.Name">@T["Copy"]</button>
+                    </div>
+                    <div class="muted id-sub">@action.Id</div>
+                </td>
+                @if (Model.CanWrite && !action.IsAdministration)
+                {
+                    <td colspan="2">
+                        <form method="post" asp-page-handler="Update" class="row" style="gap:0.4rem;align-items:center;margin:0;flex-wrap:nowrap">
+                            <input type="hidden" name="actionId" value="@action.Id" />
+                            <input type="hidden" name="Scope" value="@Model.Scope" />
+                            <input type="hidden" name="Q" value="@Model.Q" />
+                            <label class="sr-only" for="resource-@action.Id">@T["Resource type for"] @action.Name</label>
+                            <input id="resource-@action.Id" name="updatedResourceType" value="@action.ResourceType" autocomplete="off" spellcheck="false" style="width:8rem" />
+                            <label class="sr-only" for="risk-@action.Id">@T["Risk for"] @action.Name</label>
+                            <select id="risk-@action.Id" name="updatedRisk" style="width:8rem">
+                                @foreach (var risk in risks)
+                                {
+                                    if (string.Equals(risk, ConsoleFormatting.RiskLabel(action.Risk), StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <option value="@risk" selected>@T[risk]</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@risk">@T[risk]</option>
+                                    }
+                                }
+                            </select>
+                            <button type="submit" class="ghost compact">@T["Save"]</button>
+                            <div class="stack" style="flex:1 1 100%">
+                                @foreach (var agent in Model.AssignableAgents)
+                                {
+                                    <label class="row" style="gap:0.4rem">
+                                        <input type="checkbox" name="updatedAgentIds" value="@agent.Id" checked="@(action.AgentIds.Contains(agent.Id))" />
+                                        <span><code>@agent.ExternalId</code></span>
+                                    </label>
+                                }
+                            </div>
+                        </form>
+                    </td>
+                }
+                else
+                {
+                    <td><code>@action.ResourceType</code></td>
+                    <td><span class="badge @ConsoleFormatting.RiskBadge(action.Risk)">@T[ConsoleFormatting.RiskLabel(action.Risk)]</span></td>
+                }
+                <td>
+                    @if (action.PolicyCoverage == "published" && !string.IsNullOrEmpty(action.PolicyId))
+                    {
+                        <a href="/policies/@action.PolicyId"><span class="badge allow">@T["Published"]</span></a>
+                    }
+                    else if (action.PolicyCoverage == "draft" && !string.IsNullOrEmpty(action.PolicyId))
+                    {
+                        <a href="/policies/@action.PolicyId"><span class="badge wait">@T["Draft"]</span></a>
+                    }
+                    else
+                    {
+                        <span class="badge deny">@T["No policy"]</span>
+                        @if (Model.CanWrite && !action.IsAdministration)
+                        {
+                            <div class="muted id-sub">
+                                <a href="/policies?action=@Uri.EscapeDataString(action.Name)&amp;resource_type=@Uri.EscapeDataString(action.ResourceType)#create-policy">@T["Create policy"]</a>
+                            </div>
+                        }
+                    }
+                </td>
+                <td class="muted">@action.Agents</td>
+                <td>
+                    @if (string.IsNullOrEmpty(action.GuardTool))
+                    {
+                        <span class="muted">—</span>
+                    }
+                    else
+                    {
+                        <code>@action.GuardTool</code>
+                    }
+                </td>
+                @if (Model.CanWrite && !Model.IsAdminScope)
+                {
+                    <td>
+                        @if (!action.IsAdministration)
+                        {
+                            <form method="post" asp-page-handler="Delete">
+                                <input type="hidden" name="actionId" value="@action.Id" />
+                                <input type="hidden" name="Scope" value="@Model.Scope" />
+                                <input type="hidden" name="Q" value="@Model.Q" />
+                                <button type="submit"
+                                        class="ghost compact"
+                                        data-confirm
+                                        data-confirm-title="@T.Format("Delete {0}?", action.Name)"
+                                        data-confirm-body="@T["Authorize will DENY this action as unknown. Guard MCP bindings for this name are removed. Existing policies are not deleted."]"
+                                        data-confirm-action="@T["Delete action"]"
+                                        data-confirm-danger="true">@T["Delete"]</button>
+                            </form>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,38 @@
+id: llm-complete-production
+version: 1
+priority: 100
+match:
+  action: llm.complete
+  resource_type: model
+rules:
+  - name: deny-unknown-model
+    when:
+      field: resource.attributes.in_catalog
+      op: eq
+      value: false
+    effect: DENY
+    reason: Model is not in the organization catalog
+  - name: deny-over-budget
+    when:
+      field: resource.attributes.over_budget
+      op: eq
+      value: true
+    effect: DENY
+    reason: Estimated cost exceeds remaining monthly budget
+  - name: approval-expensive
+    when:
+      field: resource.attributes.estimated_cost_usd
+      op: gt
+      value: 1
+    effect: REQUIRE_APPROVAL
+    reason: High estimated model spend needs a human
+    approval:
+      expires_in: 30m
+      approver_roles: [org-admin, billing-manager]
+  - name: allow-catalog-chat
+    when:
+      all:
+        - { field: resource.attributes.in_catalog, op: eq, value: true }
+        - { field: resource.attributes.model_tier, op: in, value: [cheap, strong] }
+    effect: ALLOW
+fallback: DENY

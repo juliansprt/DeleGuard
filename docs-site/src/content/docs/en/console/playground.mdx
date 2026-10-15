@@ -1,0 +1,37 @@
+---
+title: Playground
+description: Exercise ALLOW, DENY, and REQUIRE_APPROVAL with your agents and actions, on the same path a real agent uses.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Playground** (`/playground`) really calls `POST /v1/authorize` as the agent you pick. You do not paste a production `dgk_…`: Deleguard binds that agent to this console request (it does not rotate or reveal keys). The console session never authenticates as the agent on `POST /v1/authorize`. [Policy Test](/en/console/policies/) is a dry-run; this page **writes** the decision.
+
+![Playground with the authorize form and decision panel](/console/playground.png)
+
+## Your configuration
+
+The form lists this tenant’s **agents**, **actions**, and **published policies**. Environment comes from the agent. Authorize uses the published policy for that action (drafts do not count). The browser remembers agent, action, and attributes in `localStorage` (never on the server).
+
+Authorize requires `agents.write`. To pin a specific credential, open **Use a specific agent key**. Pasting that key does **not** sign you into the console.
+
+<Aside type="caution">
+Console tokens (`dgc_`) and Administration MCP tokens (`dgm_`) cannot authorize on `POST /v1/authorize`. Playground binds the selected agent in-process (or a production `dgk_`, if you paste it).
+</Aside>
+
+## Walkthrough
+
+<Steps>
+
+1. Pick an **Agent**. Do not paste its key.
+2. Pick an **Action** from your catalog. The published policy appears below (or a DENY warning if none). `resource_type` fills in.
+3. The **ALLOW** / **APPROVAL** / **DENY** chips fill `resource_id` and attribute JSON generated from that action’s published rules.
+4. Click **Authorize**. Read the badge, `reason`, and `decision_id`.
+5. If there is an `approval_id`, **Open approval** jumps to [Approvals](/en/console/approvals/).
+6. After ALLOW with a permit, **Report execution** calls `POST /v1/executions` (evidence; it does not mutate a neighbor ERP).
+
+</Steps>
+
+<Aside type="note">
+Without ALLOW and an active permit, a real agent must not execute. Playground shows that rule: Report execution appears only with a permit.
+</Aside>

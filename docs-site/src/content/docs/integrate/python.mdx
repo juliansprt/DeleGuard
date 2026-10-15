@@ -1,0 +1,91 @@
+---
+title: Python
+description: Cliente mínimo en Python para POST /v1/authorize contra Deleguard local.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El ejemplo del repo (`examples/python/authorize_demo.py`) usa solo la biblioteca estándar. Cambia `DELEGUARD_URL` si corres Compose (`http://localhost:8080`).
+
+El bucle completo **LLM → tool_call → authorize → ERP** está en [Integrar con un LLM](/integrate/with-llm/). Esta página es el cliente HTTP que pegas dentro de ese handler.
+
+```powershell
+$env:DELEGUARD_URL = "http://127.0.0.1:5080"
+$env:DELEGUARD_TOKEN = "dgk_demo_invoice_agent_local_dev_only"
+python examples/python/authorize_demo.py
+```
+
+## Pegar en tu tool handler
+
+```python
+import json, os, uuid, urllib.request
+
+BASE = os.environ.get("DELEGUARD_URL", "http://127.0.0.1:5080")
+TOKEN = os.environ["DELEGUARD_TOKEN"]  # dgk_…
+
+def authorize(*, action, resource_type, resource_id, attributes, agent_id, environment, actor_id="usr_481"):
+    body = {
+        "agent": {"id": agent_id, "environment": environment},
+        "actor": {"id": actor_id, "type": "human"},
+        "action": action,
+        "resource": {"type": resource_type, "id": resource_id, "attributes": attributes},
+        "context": {"reason": "agent-tool"},
+    }
+    req = urllib.request.Request(
+        f"{BASE}/v1/authorize",
+        data=json.dumps(body).encode(),
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+            "Idempotency-Key": uuid.uuid4().hex,
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read().decode())
+
+def report_execution(decision_id, status="SUCCESS"):
+    body = {"decision_id": decision_id, "status": status}
+    req = urllib.request.Request(
+        f"{BASE}/v1/executions",
+        data=json.dumps(body).encode(),
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    urllib.request.urlopen(req).read()
+```
+
+Uso en el cancel de factura:
+
+```python
+decision = authorize(
+    action="invoice.cancel",
+    resource_type="invoice",
+    resource_id=invoice.id,
+    attributes={
+        "amount": invoice.amount,
+        "currency": invoice.currency,
+        "status": invoice.status,
+        "reportedToTaxAuthority": invoice.reported,
+    },
+    agent_id="invoice-agent",
+    environment="production",
+)
+
+match decision["decision"]:
+    case "ALLOW":
+        invoice_service.cancel(invoice.id)
+        report_execution(decision["decision_id"])
+    case "DENY":
+        raise PermissionError(decision.get("reason", "denied"))
+    case "REQUIRE_APPROVAL":
+        notify_approver(decision["approval_id"])
+        raise PendingApproval(decision["approval_id"])
+```
+
+<Aside type="tip">
+`urlopen` lanza en 4xx/5xx. Un DENY **no** lanza: es 200. Captura `HTTPError` para 401/503 y trata 503 como “no ejecutar”.
+</Aside>

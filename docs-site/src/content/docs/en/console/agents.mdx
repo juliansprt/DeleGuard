@@ -1,0 +1,51 @@
+---
+title: Agents
+description: Register non-human identities, copy the one-time API key, rotate or disable credentials.
+---
+
+Use **Agents, Actions, and Policies directly with `POST /v1/authorize`**, without configuring AI Gateway, providers, models, budgets, or Guard MCP. Your application enforces the decision before executing and can report the result with `POST /v1/executions`. AI Gateway is optional for model calls; Guard MCP is optional for MCP tools.
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Agents** (`/agents`) is under **Configure**. Every authorize is attributed to an agent. Seed creates `invoice-agent` in the `production` environment.
+
+![Registered agents table with invoice-agent and Add agent form](/console/agents.png)
+
+Readers with `agents.read` see the directory. Create, rotate, disable, and enable require `agents.write`.
+
+## Create
+
+<Steps>
+
+1. **External id** — lowercase slug (`invoice-agent`). This is `agent.id` in the authorize JSON and what you see in Audit. The table also shows the internal `agt_…` id.
+2. **Display name** — human label.
+3. **Environment** — isolation: a `production` key must not work in staging. Create extra environments on [Environments](/en/console/environments/).
+4. **Create agent**.
+
+</Steps>
+
+The key identifies the **workload**. Actor identity comes from your application, not from this form.
+
+## The key is shown once
+
+After create or **Rotate key**, a **Store this API key now** banner reveals the `dgk_…` secret. Copy it for the workload. [Playground](/en/console/playground/) does not need that key: it binds the selected agent to the request.
+
+**Rotate key** asks for confirmation. The previous key **stops working immediately**. Update the agent secret. Playground still works because it does not use the production key.
+
+If rotate needs a second approver, the page links to the pending approval instead of revealing a key.
+
+<Aside type="danger">
+Do not paste this key into chats, tickets, or logs. Console tokens (`dgc_`) and Administration MCP tokens (`dgm_`) cannot call `/v1/authorize`.
+</Aside>
+
+## Disable
+
+**Disable** is incident response: authorize calls from that agent fail closed until **Enable**. Key hashes are kept; this is not a rotation. The Administration MCP agent (`admin-mcp`) cannot be disabled.
+
+To put this agent in front of MCP tools, run the [Guard MCP](/en/integrate/mcp-guard/) with its `dgk_` key. Do not use a `dgm_` Administration MCP token.
+
+## Connected agent detail
+
+Select an agent name to view its environment, latest decision, assigned actions and policies, and monthly settled Gateway spend. **Connect my agent** guides registration, assignment, and testing.
+
+![Agent detail](/console/agent-detail.png)

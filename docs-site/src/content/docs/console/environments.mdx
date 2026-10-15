@@ -1,0 +1,39 @@
+---
+title: Environments
+description: Crear, renombrar y borrar límites de aislamiento para agentes.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Environments** (`/environments`) está en **Configure**. El seed crea `production`. Cada agente se liga a un entorno al registrarse; una API key de production no debe autorizar un agente de staging.
+
+Quien tenga `environments.read` ve el directorio. Crear, renombrar y borrar exigen `environments.write`.
+
+## Crear
+
+<Steps>
+
+1. **Name** — slug en minúsculas (`staging`, `qa`). Es el `agent.environment` de authorize.
+2. **Create environment**.
+3. Elige ese nombre al [registrar un agente](/console/agents/).
+
+</Steps>
+
+## Renombrar
+
+El id interno `env_…` no cambia. Los agentes siguen ligados. Los clientes de authorize deben enviar el **nuevo** nombre; un string `production` residual no coincidirá con `prod`.
+
+Riesgo HIGH: un operator necesita aprobación de org-admin. La página enlaza a la aprobación pendiente en lugar de renombrar al instante.
+
+## Borrar
+
+El borrado se bloquea si:
+
+- Aún hay agentes ligados (deshabilítalos o recréalos en otro entorno).
+- Es el último entorno de la organización.
+
+Riesgo HIGH: un operator necesita aprobación. Los entornos vacíos sí se pueden quitar después.
+
+<Aside type="caution">
+No compartas API keys entre entornos. El aislamiento es el propósito de esta página.
+</Aside>

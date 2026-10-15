@@ -1,0 +1,211 @@
+@page
+@model Deleguard.DemoAgent.Pages.IndexModel
+@{
+    ViewData["Title"] = "Chat";
+}
+
+<div class="layout">
+    <aside>
+        <div class="card">
+            <h2>Demo invoices</h2>
+            <p class="muted">Business facts. Edit the table, then ask the agent to cancel. The model does not decide these values.</p>
+            @if (!string.IsNullOrWhiteSpace(Model.InvoiceMessage))
+            {
+                <p class="@(Model.InvoiceError ? "err" : "muted")">@Model.InvoiceMessage</p>
+            }
+            <form method="post" asp-page-handler="SaveInvoices">
+                <table class="data invoice-editor">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th>Tax</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Rows.Count; i++)
+                    {
+                        <tr>
+                            <td>
+                                <input type="hidden" asp-for="Rows[i].OriginalId" />
+                                <input asp-for="Rows[i].Id" class="cell-id" spellcheck="false" />
+                            </td>
+                            <td>
+                                <select asp-for="Rows[i].Status">
+                                    <option value="draft">draft</option>
+                                    <option value="issued">issued</option>
+                                    <option value="cancelled">cancelled</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input asp-for="Rows[i].AmountText" inputmode="numeric" spellcheck="false" />
+                            </td>
+                            <td class="tax-cell">
+                                <label>
+                                    <input asp-for="Rows[i].ReportedToTaxAuthority" />
+                                    yes
+                                </label>
+                            </td>
+                            <td>
+                                <label class="remove">
+                                    <input asp-for="Rows[i].Remove" />
+                                    Remove
+                                </label>
+                            </td>
+                        </tr>
+                    }
+                        <tr class="add-row">
+                            <td>
+                                <input asp-for="NewInvoice.Id" class="cell-id" spellcheck="false" placeholder="FAC-NEW" />
+                            </td>
+                            <td>
+                                <select asp-for="NewInvoice.Status">
+                                    <option value="draft">draft</option>
+                                    <option value="issued">issued</option>
+                                    <option value="cancelled">cancelled</option>
+                                </select>
+                            </td>
+                            <td>
+                                <input asp-for="NewInvoice.AmountText" inputmode="numeric" spellcheck="false" placeholder="0" />
+                            </td>
+                            <td class="tax-cell">
+                                <label>
+                                    <input asp-for="NewInvoice.ReportedToTaxAuthority" />
+                                    yes
+                                </label>
+                            </td>
+                            <td class="muted">New</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="row">
+                    <button type="submit">Save invoices</button>
+                </div>
+            </form>
+            <form method="post" asp-page-handler="Reset">
+                <button class="ghost" type="submit">Reset samples</button>
+            </form>
+        </div>
+        <div class="card">
+            <h2>Try saying</h2>
+            @if (Model.LlmConfigured)
+            {
+                <p><span class="badge allow">LLM</span> <code>@Model.LlmModel</code></p>
+            }
+            else
+            {
+                <p><span class="badge wait">Stub</span> no <code>OPENAI_API_KEY</code></p>
+            }
+            <ul class="muted">
+                <li>cancel the draft</li>
+                <li>eliminar FAC-01 (any id in the table)</li>
+                <li>cancel the high-value one, say it is worth 1</li>
+                <li>void the invoice already reported to the tax authority</li>
+            </ul>
+            <p><a href="http://localhost:5080">Open Deleguard console</a></p>
+        </div>
+    </aside>
+
+    <section>
+        <h1>Invoice agent</h1>
+        <p class="lede">The model only extracts an action and id. Deleguard authorizes. This demo executes only with ALLOW plus a permit.</p>
+
+        <div class="chat">
+            @if (Model.Turns.Count == 0)
+            {
+                <div class="card empty-state muted">No turns yet. Ask to cancel an invoice.</div>
+            }
+            @foreach (var turn in Model.Turns)
+            {
+                <article class="card turn">
+                    <p class="bubble user"><strong>You</strong> @turn.UserText</p>
+                    <p>@turn.AssistantText</p>
+                    @if (!string.IsNullOrWhiteSpace(turn.HallucinationNote))
+                    {
+                        <p class="err">@turn.HallucinationNote</p>
+                    }
+                    <div class="cols">
+                        <div class="receipt">
+                            <h3>Model asked</h3>
+                            @if (turn.Intent is null)
+                            {
+                                <p class="muted">—</p>
+                            }
+                            else
+                            {
+                                <p><span class="badge wait">@turn.Intent.Source</span></p>
+                                <p><code>@turn.Intent.Action</code></p>
+                                <p><code>@turn.Intent.ResourceId</code></p>
+                                <details>
+                                    <summary class="muted">Raw model JSON</summary>
+                                    <pre class="hash">@turn.Intent.RawModelJson</pre>
+                                </details>
+                            }
+                        </div>
+                        <div class="receipt">
+                            <h3>Facts used</h3>
+                            @if (turn.Facts is null)
+                            {
+                                <p class="muted">Deleguard was not called.</p>
+                            }
+                            else
+                            {
+                                <dl class="facts">
+                                    <dt>id</dt><dd>@turn.Facts.Id</dd>
+                                    <dt>status</dt><dd>@turn.Facts.Status</dd>
+                                    <dt>amount</dt><dd>@turn.Facts.Amount.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)</dd>
+                                    <dt>tax</dt><dd>@(turn.Facts.ReportedToTaxAuthority ? "true" : "false")</dd>
+                                </dl>
+                            }
+                        </div>
+                        <div class="receipt">
+                            <h3>Deleguard decision</h3>
+                            @if (turn.Decision is null)
+                            {
+                                <p class="muted">—</p>
+                            }
+                            else
+                            {
+                                var badge = turn.Decision.Decision switch
+                                {
+                                    "ALLOW" => "allow",
+                                    "DENY" => "deny",
+                                    _ => "wait"
+                                };
+                                <p><span class="badge @badge">@turn.Decision.Decision</span></p>
+                                <p class="muted">@turn.Decision.Reason</p>
+                                @if (!string.IsNullOrWhiteSpace(turn.Decision.DecisionId))
+                                {
+                                    <p class="hash">@turn.Decision.DecisionId</p>
+                                }
+                            }
+                        </div>
+                    </div>
+                    @if (turn.CanRetry && !string.IsNullOrWhiteSpace(turn.InvoiceId))
+                    {
+                        <div class="row" style="margin-top:0.85rem">
+                            @if (!string.IsNullOrWhiteSpace(turn.ApprovalUrl))
+                            {
+                                <a class="button ghost" href="@turn.ApprovalUrl">Open approval</a>
+                            }
+                            <form method="post" asp-page-handler="Retry">
+                                <input type="hidden" name="invoiceId" value="@turn.InvoiceId" />
+                                <button type="submit">Retry</button>
+                            </form>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+
+        <form method="post" asp-page-handler="Chat" class="card composer">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" class="short" autofocus placeholder="Cancel FAC-DRAFT"></textarea>
+            <div class="row" style="margin-top:0.75rem">
+                <button type="submit">Send</button>
+            </div>
+        </form>
+    </section>
+</div>

@@ -1,0 +1,311 @@
+@page "/access/ai-gateway"
+@model Deleguard.Api.Pages.Access.AiGatewayModel
+@{
+    ViewData["Title"] = "AI Gateway";
+    ViewData["Nav"] = "ai-gateway";
+}
+
+<partial name="_PageHeader" model='("AI Gateway", "Conecta tus modelos, establece un presupuesto y controla las llamadas. Integración opcional.")' />
+<partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+
+@if(Model.CanWrite){
+<section class="card" aria-label="@T["Set up this integration"]"><h2 class="section-title">@T["Set up this integration"]</h2><ol class="journey-steps compact-journey">
+    <li><span class="step-number">1</span><div><strong><a href="#gateway-controls">@T["Choose limits"]</a></strong><small>@T["Enable the gateway and set a monthly budget."]</small></div></li>
+    <li><span class="step-number">2</span><div><strong><a href="#gateway-models">@T["Choose models"]</a></strong><small>@T["Add the model aliases your application will request."]</small></div></li>
+    <li><span class="step-number">3</span><div><strong><a href="#gateway-connect">@T["Connect and test"]</a></strong><small>@T["Run the local gateway, use the example below, then check its decision and reported result."]</small></div></li>
+</ol><a class="button ghost" href="@(!Model.Enabled ? "#gateway-controls" : !Model.Routes.Any(r=>r.Enabled) ? "#gateway-models" : "#gateway-connect")">@T["Continue setup"] →</a></section>
+}
+<nav class="section-links" aria-label="@T["Gateway sections"]"><a href="#gateway-connect">@T["Connection"]</a><a href="#gateway-models">@T["Models"]</a><a href="#gateway-controls">@T["Controls"]</a><a href="#gateway-activity">@T["Activity"]</a></nav>
+<div class="card" id="gateway-controls">
+    <div class="card-head">
+        <h2>@T["Status and budget"]</h2>
+        <span class="badge @(Model.Enabled ? "allow" : "deny")">@(Model.Enabled ? T["On"] : T["Off"])</span>
+    </div>
+    @if (!Model.Enabled)
+    {
+        <p class="err">@T["The gateway is off. The PEP will fail closed and will not call a provider."]</p>
+    }
+    <p class="muted">@T["Monthly spend"] <strong>@Model.UsedBudgetUsd.ToString("0.####")</strong> / <strong>@Model.MonthlyBudgetUsd.ToString("0.####")</strong> USD · <strong>@Model.RemainingBudgetUsd.ToString("0.####")</strong> @T["remaining."]</p>
+    <div class="spend-meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Model.BudgetUsedPercent" aria-label="@T["Monthly budget used"]">
+        <div class="spend-meter-fill" style="width: @Model.BudgetUsedPercent%"></div>
+    </div>
+    @if (Model.CanWrite)
+    {
+        <form method="post" asp-page-handler="Save" class="stack" style="margin-top:1rem">
+            <label class="check-row">
+                <input asp-for="Enabled" />
+                <span>@T["Enable AI Gateway for this organization"]</span>
+            </label>
+            <div class="approval-fields">
+                <p>
+                    <label asp-for="MonthlyBudgetUsd">@T["Monthly budget (USD)"]</label>
+                    <input asp-for="MonthlyBudgetUsd" type="number" step="0.01" min="0" />
+                </p>
+                <p>
+                    <label asp-for="RoutingMode">@T["Routing"]</label>
+                    <select asp-for="RoutingMode">
+                        <option value="static">@T["Always the requested alias"]</option>
+                        <option value="heuristic">@T["Cheap unless tools, JSON schema, image, or long"]</option>
+                        <option value="cascade">@T["Try cheap, escalate if needed (skip cheap for tools/schema/image or very long)"]</option>
+                    </select>
+                </p>
+            </div>
+            <input type="hidden" asp-for="DefaultTokenBudgetClass" />
+            <input type="hidden" asp-for="ShortMaxOutputTokens" />
+            <input type="hidden" asp-for="StandardMaxOutputTokens" />
+            <input type="hidden" asp-for="DeepMaxOutputTokens" />
+            <input type="hidden" asp-for="HeuristicCheapMaxTokens" />
+            <input type="hidden" asp-for="CascadeSkipToStrongTokens" />
+            <input type="hidden" asp-for="CascadeMaxAttempts" />
+            <input type="hidden" asp-for="CascadeMaxUsd" />
+            <input type="hidden" asp-for="ExactCacheTtlSeconds" />
+            <input type="hidden" asp-for="PrefixCacheEnabled" />
+            <input type="hidden" asp-for="ShadowRouterEnabled" />
+            <p><button type="submit">@T["Save"]</button></p>
+        </form>
+    }
+</div>
+
+<div class="card">
+    <h2 id="gateway-connect">@T["Connect the agent"]</h2>
+    <p class="muted">@T["Point any OpenAI SDK at the local PEP. Use a"] <code>dgk_</code> @T["agent key. Provider keys stay in the PEP process."]</p>
+    <ul class="setup-checks">
+        <li class="@(Model.Enabled ? "ok" : "err")">@T["Gateway enabled"]</li>
+        <li class="@(Model.HasOpenAiChatPair ? "ok" : "err")">@T["Catalog aliases"] <code>chat.cheap</code> / <code>chat.strong</code> / <code>chat.default</code></li>
+        <li>@T["BYOK on the PEP:"] <code>Providers__openai__ApiKey</code> @T["(Deleguard never stores it)"]</li>
+    </ul>
+    <div class="snippet-tabs" data-snippet-tabs>
+        <div class="snippet-tablist" role="tablist">
+            <button type="button" class="ghost compact active" data-snippet-tab="curl">curl</button>
+            <button type="button" class="ghost compact" data-snippet-tab="ts">TypeScript</button>
+            <button type="button" class="ghost compact" data-snippet-tab="python">Python</button>
+            <button type="button" class="ghost compact" data-snippet-tab="pep">@T["PEP env"]</button>
+        </div>
+        <div data-snippet-panel="curl">
+            <pre class="hash" id="snippet-curl">@Model.CurlSnippet</pre>
+            <p class="row"><button type="button" class="ghost" data-copy-target="#snippet-curl" data-copy>@T["Copy"]</button></p>
+        </div>
+        <div data-snippet-panel="ts" hidden>
+            <pre class="hash" id="snippet-ts">@Model.TypeScriptSnippet</pre>
+            <p class="row"><button type="button" class="ghost" data-copy-target="#snippet-ts" data-copy>@T["Copy"]</button></p>
+        </div>
+        <div data-snippet-panel="python" hidden>
+            <pre class="hash" id="snippet-python">@Model.PythonSnippet</pre>
+            <p class="row"><button type="button" class="ghost" data-copy-target="#snippet-python" data-copy>@T["Copy"]</button></p>
+        </div>
+        <div data-snippet-panel="pep" hidden>
+            <pre class="hash" id="snippet-pep">@Model.PepEnvSnippet</pre>
+            <p class="row"><button type="button" class="ghost" data-copy-target="#snippet-pep" data-copy>@T["Copy"]</button></p>
+        </div>
+    </div>
+    <p class="hint">@T["Default PEP URL"] <code>@AiGatewayModel.PepBaseUrl</code>@T[". Responses include"] <code>X-Deleguard-Decision</code>, <code>X-Deleguard-Model</code>@T[", and"] <code>X-Deleguard-Cache</code>.</p>
+</div>
+
+<div class="card">
+    <div class="card-head">
+        <h2 id="gateway-models">@T["Models"]</h2>
+        @if (Model.CanWrite)
+        {
+            <form method="post" asp-page-handler="ApplyOpenAiChatPair">
+                <button type="submit" class="ghost">@T["Add OpenAI chat pair"]</button>
+            </form>
+        }
+    </div>
+    <p class="hint">@T["Stable aliases the agent requests. Failover and routing stay in the same fallback group and region."]</p>
+    @if (Model.Routes.Count == 0)
+    {
+        <p class="muted">@T["No model routes yet. Use"] <strong>@T["Add OpenAI chat pair"]</strong> @T["for"] <code>chat.cheap</code>, <code>chat.strong</code>@T[", and"] <code>chat.default</code>.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Alias</th>
+                        <th>@T["Provider / model"]</th>
+                        <th>@T["Tier"]</th>
+                        <th>@T["Region"]</th>
+                        <th>@T["Fallback"]</th>
+                        <th>@T["USD / 1M in"]</th>
+                        <th>@T["USD / 1M out"]</th>
+                        <th>@T["Order"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var route in Model.Routes)
+                {
+                    <tr class="@(route.Enabled ? null : "is-disabled")">
+                        <td>
+                            <code>@route.Alias</code>
+                            @if (!route.Enabled)
+                            {
+                                <div class="id-sub">@T["disabled"]</div>
+                            }
+                        </td>
+                        <td><code>@route.Provider/@route.Model</code></td>
+                        <td>@T[route.Tier]</td>
+                        <td>@route.Region</td>
+                        <td>@route.FallbackGroup</td>
+                        <td>@route.InputPricePerMillion.ToString("0.####")</td>
+                        <td>@route.OutputPricePerMillion.ToString("0.####")</td>
+                        <td>@route.SortOrder</td>
+                        <td>
+                            @if (Model.CanWrite)
+                            {
+                                <div class="row-actions">
+                                    <a href="/access/ai-gateway?edit=@route.Id">@T["Edit"]</a>
+                                    <form method="post" asp-page-handler="DeleteRoute">
+                                        <input type="hidden" name="routeId" value="@route.Id" />
+                                        <button type="submit" class="ghost compact">@T["Remove"]</button>
+                                    </form>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (Model.CanWrite)
+{
+    <div class="card form-panel">
+        <h2>@(Model.EditingRoute ? T["Edit catalog route"] : T["Add catalog route"])</h2>
+        <form method="post" asp-page-handler="UpsertRoute" class="stack">
+            <input type="hidden" asp-for="RouteId" />
+            <div class="approval-fields">
+                <p>
+                    <label asp-for="RouteAlias">Alias</label>
+                    <input asp-for="RouteAlias" placeholder="chat.cheap" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label asp-for="RouteProviderPreset">@T["Provider"]</label>
+                    <select asp-for="RouteProviderPreset" data-provider-preset>
+                        <option value="openai">OpenAI</option>
+                        <option value="azure">Azure OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="custom">@T["Custom"]</option>
+                    </select>
+                </p>
+                <p data-custom-provider>
+                    <label asp-for="RouteProvider">@T["Custom provider"]</label>
+                    <input asp-for="RouteProvider" placeholder="openai" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label asp-for="RouteModel">@T["Model"]</label>
+                    <input asp-for="RouteModel" placeholder="gpt-4.1-mini" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label asp-for="RouteTier">@T["Tier"]</label>
+                    <select asp-for="RouteTier">
+                        <option value="cheap">@T["cheap"]</option>
+                        <option value="strong">@T["strong"]</option>
+                        <option value="embed">@T["embed"]</option>
+                    </select>
+                </p>
+                <p>
+                    <label asp-for="RouteRegion">@T["Region"]</label>
+                    <input asp-for="RouteRegion" placeholder="global" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label asp-for="RouteFallbackGroup">@T["Fallback group"]</label>
+                    <input asp-for="RouteFallbackGroup" placeholder="chat" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label asp-for="RouteInputPricePerMillion">@T["Input USD / 1M tokens"]</label>
+                    <input asp-for="RouteInputPricePerMillion" type="number" step="0.000001" min="0" />
+                </p>
+                <p>
+                    <label asp-for="RouteOutputPricePerMillion">@T["Output USD / 1M tokens"]</label>
+                    <input asp-for="RouteOutputPricePerMillion" type="number" step="0.000001" min="0" />
+                </p>
+                <p>
+                    <label asp-for="RouteSortOrder">@T["Sort order"]</label>
+                    <input asp-for="RouteSortOrder" type="number" min="0" max="9999" />
+                </p>
+            </div>
+            <label class="check-row">
+                <input asp-for="RouteEnabled" />
+                <span>@T["Enabled in the PEP catalog"]</span>
+            </label>
+            <p class="row">
+                <button type="submit">@(Model.EditingRoute ? T["Save route"] : T["Add route"])</button>
+                @if (Model.EditingRoute)
+                {
+                    <a class="ghost" href="/access/ai-gateway" style="display:inline-flex;align-items:center">@T["Cancel"]</a>
+                }
+            </p>
+        </form>
+    </div>
+}
+
+@if (Model.CanWrite)
+{
+    <details class="card">
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Advanced"]</summary>
+        <form method="post" asp-page-handler="Save" class="stack">
+            <input type="hidden" asp-for="Enabled" />
+            <input type="hidden" asp-for="RoutingMode" />
+            <input type="hidden" asp-for="MonthlyBudgetUsd" />
+            <p class="hint">@T["Output caps, cache, and shadow logs. These never sit on the ALLOW/DENY path. Length is not difficulty: tools, JSON schema, and images skip cheap even when the prompt is short."]</p>
+            <div class="approval-fields">
+                <p>
+                    <label asp-for="DefaultTokenBudgetClass">@T["Default token class"]</label>
+                    <select asp-for="DefaultTokenBudgetClass">
+                        <option value="short">@T["short"]</option>
+                        <option value="standard">@T["standard"]</option>
+                        <option value="deep">@T["deep"]</option>
+                    </select>
+                </p>
+                <p>
+                    <label asp-for="ShortMaxOutputTokens">@T["short max output"]</label>
+                    <input asp-for="ShortMaxOutputTokens" type="number" min="1" max="128000" />
+                </p>
+                <p>
+                    <label asp-for="StandardMaxOutputTokens">@T["standard max output"]</label>
+                    <input asp-for="StandardMaxOutputTokens" type="number" min="1" max="128000" />
+                </p>
+                <p>
+                    <label asp-for="DeepMaxOutputTokens">@T["deep max output"]</label>
+                    <input asp-for="DeepMaxOutputTokens" type="number" min="1" max="128000" />
+                </p>
+                <p>
+                    <label asp-for="HeuristicCheapMaxTokens">@T["Cheap-if-shorter-than (tokens)"]</label>
+                    <input asp-for="HeuristicCheapMaxTokens" type="number" min="1" max="128000" />
+                </p>
+                <p>
+                    <label asp-for="CascadeSkipToStrongTokens">@T["Skip cheap above (tokens)"]</label>
+                    <input asp-for="CascadeSkipToStrongTokens" type="number" min="1" max="128000" />
+                </p>
+                <p>
+                    <label asp-for="CascadeMaxAttempts">@T["Escalate at most (1–2)"]</label>
+                    <input asp-for="CascadeMaxAttempts" type="number" min="1" max="2" />
+                </p>
+                <p>
+                    <label asp-for="CascadeMaxUsd">@T["Escalate max USD"]</label>
+                    <input asp-for="CascadeMaxUsd" type="number" step="0.01" min="0" />
+                </p>
+                <p>
+                    <label asp-for="ExactCacheTtlSeconds">@T["Exact cache TTL (seconds, 0 = off)"]</label>
+                    <input asp-for="ExactCacheTtlSeconds" type="number" min="0" max="86400" />
+                </p>
+            </div>
+            <label class="check-row">
+                <input asp-for="PrefixCacheEnabled" />
+                <span>@T["Send prefix cache key (system messages only)"]</span>
+            </label>
+            <label class="check-row">
+                <input asp-for="ShadowRouterEnabled" />
+                <span>@T["Log a shadow would-route guess (never used for ALLOW/DENY)"]</span>
+            </label>
+            <p><button type="submit">@T["Save advanced"]</button></p>
+        </form>
+    </details>
+}
+
+<section id="gateway-activity"><h2>@T["Activity · selected application"]</h2><p class="muted">@T["Only model metadata is shown. Costs and routing reasons are reported by the integration; a dash means no report. The budget above is organization-wide."]</p>
+@if (HttpContext.GetConsoleUser()?.HasPermission("audit.read") == true) { <partial name="_DecisionActivity" model="Model.Activity" /><a href="/audit/activity?filter=gateway">@T["View all Gateway decisions"]</a> } else { <p>@T["Activity requires audit access."]</p> }</section>

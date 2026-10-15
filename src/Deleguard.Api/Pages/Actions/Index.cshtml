@@ -1,0 +1,178 @@
+@page "/actions"
+@using Deleguard.Application.Authorization
+@model Deleguard.Api.Pages.Actions.IndexModel
+@{
+    ViewData["Title"] = "Acciones";
+    ViewData["Nav"] = "actions";
+}
+
+<partial name="_PageHeader" model='("Acciones", "Define las operaciones que quieres controlar y los agentes que pueden solicitarlas.")' />
+
+@if (!string.IsNullOrEmpty(Model.CreatedName))
+{
+    <div class="flash flash-ok" role="status" aria-live="polite">
+        <p style="margin:0 0 0.5rem"><strong>@T["Registered"] <code>@Model.CreatedName</code>.</strong> @T["Authorize still DENYs until a policy for this action is published."]</p>
+        <p class="row" style="margin:0">
+            <a class="button" href="/policies?action=@Uri.EscapeDataString(Model.CreatedName)&amp;resource_type=@Uri.EscapeDataString(Model.CreatedResourceType ?? "resource")#create-policy">@T["Create policy"]</a>
+            <a class="button ghost" href="/playground">@T["Open Playground"]</a>
+        </p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    @if (HttpContext.GetConsoleUser()?.HasPermission("agents.read") == true && HttpContext.GetConsoleUser()?.HasPermission("policies.read") == true) { <p><a class="button ghost" href="/actions/coverage">@T["View agent → action → policy coverage"]</a></p> }
+<partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+@if (Model.CanWrite && !Model.IsAdminScope)
+{
+    <details class="card create-panel" id="add-action" @(Model.IsError || Model.ProtectedCount == 0 ? "open" : null)>
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Add action"]</summary>
+        <div class="create-panel-body">
+            <form method="post" asp-page-handler="Create" class="stack">
+                <input type="hidden" name="Scope" value="@Model.Scope" />
+                <input type="hidden" name="Q" value="@Model.Q" />
+                <p>
+                    <label for="action-name">@T["Name"]</label>
+                    <input asp-for="Name" id="action-name" placeholder="invoice.cancel" autocomplete="off" spellcheck="false"
+                           pattern="[a-z][a-z0-9_.:-]{1,127}" maxlength="128" />
+                    <span class="hint">@T["Must match the action agents send to authorize."] @T[ActionAdminHandler.NameRules].</span>
+                    <span class="hint" data-name-warning hidden>@T["Use lowercase only. Unicode lookalikes and spaces are rejected."]</span>
+                </p>
+                <p>
+                    <label for="ResourceType">@T["Resource type"]</label>
+                    <input asp-for="ResourceType" id="ResourceType" placeholder="invoice" autocomplete="off" spellcheck="false" maxlength="64" />
+                    <span class="hint">@T["Must match the policy"] <code>match.resource_type</code>.</span>
+                </p>
+                <p>
+                    <label for="Risk">@T["Risk"]</label>
+                    <select asp-for="Risk" id="Risk">
+                        <option value="LOW">@T["LOW"]</option>
+                        <option value="MEDIUM">@T["MEDIUM"]</option>
+                        <option value="HIGH">@T["HIGH"]</option>
+                        <option value="CRITICAL">@T["CRITICAL"]</option>
+                    </select>
+                    <span class="hint">@T["Typical policy defaults: LOW allow · MEDIUM allow · HIGH approval · CRITICAL approval. Risk does not authorize — a published policy decides ALLOW / DENY / REQUIRE_APPROVAL."]</span>
+                </p>
+                <fieldset>
+                    <legend>@T["Agents"]</legend>
+                    <p class="hint">@T["Authorize DENYs unless the calling agent is assigned."]</p>
+                    @foreach (var agent in Model.AssignableAgents)
+                    {
+                        <label class="row" style="gap:0.4rem">
+                            <input type="checkbox" name="SelectedAgentIds" value="@agent.Id" />
+                            <span>@agent.DisplayName <code>@agent.ExternalId</code></span>
+                        </label>
+                    }
+                </fieldset>
+                <p class="hint">@T["The name cannot change later. Resource type and risk can be edited. Administration actions cannot be changed or deleted."]</p>
+                <button type="submit">@T["Create action"]</button>
+            </form>
+        </div>
+    </details>
+}
+
+<partial name="_ActionCatalog" model="Model" />
+
+@if (!Model.IsAdminScope)
+{
+    <details class="card" id="guard-mcp"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Opcional: conectar herramientas con Guard MCP"]</summary>
+        <h2>Guard MCP</h2>
+        <p class="muted">@T["Clients connect to the managed Guard URL. It intercepts"] <code>tools/call</code>@T[", authorizes before forwarding to configured remote MCPs, and never exposes a local command or stdio transport."]</p>
+        <pre class="hash" id="guard-snippet">@Model.GuardSnippet</pre>
+        <p class="row"><button type="button" class="ghost" data-copy-target="#guard-snippet" data-copy>@T["Copy Cursor config"]</button></p>
+        @if (Model.Bindings.Count == 0)
+        {
+            <p class="muted">@T["No MCP bindings yet. Seed creates"] <code>invoice-demo__cancel_invoice</code> → <code>invoice.cancel</code>.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>@T["Tool"]</th>
+                            <th>@T["Action"]</th>
+                            <th>@T["Resource id path"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var binding in Model.Bindings)
+                    {
+                        <tr>
+                            <td><code>@binding.McpServer</code> / <code>@binding.McpTool</code></td>
+                            <td><code>@binding.Action</code></td>
+                            <td><code>@binding.ResourceIdPath</code></td>
+                            <td>
+                                @if (Model.CanWrite)
+                                {
+                                    <form method="post" asp-page-handler="Unbind">
+                                        <input type="hidden" name="bindingId" value="@binding.BindingId" />
+                                        <input type="hidden" name="Scope" value="@Model.Scope" />
+                                        <button type="submit" class="ghost compact">@T["Remove"]</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (Model.CanWrite)
+        {
+            <form method="post" asp-page-handler="Bind" class="stack" style="margin-top:1rem">
+                <input type="hidden" name="Scope" value="@Model.Scope" />
+                <p>
+                    <label for="BindActionId">@T["Protected action"]</label>
+                    <select asp-for="BindActionId" id="BindActionId">
+                        @foreach (var action in Model.Actions.Where(item => !item.IsAdministration))
+                        {
+                            <option value="@action.Id">@action.Name</option>
+                        }
+                    </select>
+                </p>
+                <p>
+                    <label for="BindMcpServer">@T["MCP server"]</label>
+                    <input asp-for="BindMcpServer" id="BindMcpServer" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label for="BindMcpTool">@T["MCP tool"]</label>
+                    <input asp-for="BindMcpTool" id="BindMcpTool" autocomplete="off" spellcheck="false" />
+                </p>
+                <p>
+                    <label for="BindResourceIdPath">@T["Resource id path"]</label>
+                    <input asp-for="BindResourceIdPath" id="BindResourceIdPath" autocomplete="off" spellcheck="false" />
+                    <span class="hint">@T["Dotted path in the tool arguments, e.g."] <code>invoice_id</code>.</span>
+                </p>
+                <p>
+                    <label for="BindAttributePaths">@T["Attribute paths (JSON)"]</label>
+                    <textarea asp-for="BindAttributePaths" id="BindAttributePaths" rows="3" spellcheck="false"></textarea>
+                    <span class="hint">@T["Map policy attribute names to argument paths. Empty object if none."]</span>
+                </p>
+                <button type="submit">@T["Bind tool"]</button>
+            </form>
+        }
+    </details>
+}
+
+@if (Model.CanWrite)
+{
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+        <form method="dialog" class="stack">
+            <h2 id="confirm-title">@T["Confirm"]</h2>
+            <p id="confirm-body" class="muted"></p>
+            <p class="row" style="margin:0">
+                <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+            </p>
+        </form>
+    </dialog>
+}

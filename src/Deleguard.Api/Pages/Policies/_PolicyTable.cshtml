@@ -1,0 +1,63 @@
+@using Deleguard.Application.Policies
+@model Deleguard.Api.Pages.Policies.IndexModel
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>@T["Slug"]</th>
+                <th>@T["Action"]</th>
+                <th>@T["Resource"]</th>
+                <th>@T["Agents"]</th>
+                <th class="nowrap">@T["Published"]</th>
+                <th class="nowrap">@T["Versions"]</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Policies)
+        {
+            var policy = row.Summary;
+            var isCatalog = row.IsCatalog;
+            <tr>
+                <td>
+                    <code>@policy.Slug</code>
+                </td>
+                <td>@(policy.Action ?? "—")</td>
+                <td>@(string.IsNullOrWhiteSpace(policy.ResourceType) ? "—" : policy.ResourceType)</td>
+                <td class="muted">@row.Agents</td>
+                <td class="nowrap">
+                    @if (policy.PublishedVersionNumber is null)
+                    {
+                        <span class="badge wait">@T["Draft"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge allow">v@(policy.PublishedVersionNumber)</span>
+                    }
+                </td>
+                <td class="nowrap">@policy.VersionCount</td>
+                <td>
+                    <div class="row-actions">
+                        <a href="/policies/@policy.Id">@T["Open"]</a>
+                        @if (Model.CanWrite && !isCatalog)
+                        {
+                            <form method="post" asp-page-handler="Delete">
+                                <input type="hidden" name="policyId" value="@policy.Id" />
+                                <input type="hidden" name="Q" value="@Model.Q" />
+                                <input type="hidden" name="Scope" value="@Model.Scope" />
+                                <button type="submit"
+                                        class="ghost compact"
+                                        data-confirm
+                                        data-confirm-title="@T.Format("Delete {0}?", policy.Slug)"
+                                        data-confirm-body="@T["Authorize will stop using this policy. The action is DENY if no other published policy remains."]"
+                                        data-confirm-action="@T["Delete policy"]"
+                                        data-confirm-danger="true">@T["Delete"]</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

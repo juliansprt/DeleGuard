@@ -1,0 +1,8 @@
+<form method="post" asp-page="/Language" class="language-selector" data-language-form>
+    <input type="hidden" name="returnUrl" value="@Context.Request.PathBase@Context.Request.Path@Context.Request.QueryString" />
+    <label><span>@T["Language"]</span><select name="culture" aria-label="@T["Language"]" onchange="this.form.requestSubmit()">
+        <option value="en" selected="@(T.Language == "en")" lang="en">English</option>
+        <option value="es" selected="@(T.Language == "es")" lang="es">Español</option>
+    </select></label>
+    <noscript><button type="submit" class="ghost compact">@T["Apply"]</button></noscript>
+</form>

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "catalog-embed-allow",
+    "expected": "ALLOW",
+    "request": {
+      "action": "llm.embed",
+      "resource_type": "model",
+      "resource_id": "embed.default",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "embed",
+        "estimated_cost_usd": 0.0001,
+        "over_budget": false
+      }
+    }
+  },
+  {
+    "name": "unknown-embed-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.embed",
+      "resource_type": "model",
+      "resource_id": "mystery-embed",
+      "attributes": {
+        "in_catalog": false,
+        "model_tier": "embed",
+        "estimated_cost_usd": 0.0001,
+        "over_budget": false
+      }
+    }
+  },
+  {
+    "name": "embed-over-budget-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.embed",
+      "resource_type": "model",
+      "resource_id": "embed.default",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "embed",
+        "estimated_cost_usd": 0.0001,
+        "over_budget": true
+      }
+    }
+  },
+  {
+    "name": "wrong-tier-fallback-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "llm.embed",
+      "resource_type": "model",
+      "resource_id": "chat.cheap",
+      "attributes": {
+        "in_catalog": true,
+        "model_tier": "cheap",
+        "estimated_cost_usd": 0.0001,
+        "over_budget": false
+      }
+    }
+  }
+]

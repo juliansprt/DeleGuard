@@ -1,0 +1,59 @@
+---
+title: YAML de políticas
+description: DSL de producto, operadores, match, fallback y cómo se evalúa una política Deleguard.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El YAML es el **contrato**. No se publica Rego ni Cedar al cliente. El motor nativo (`Deleguard.Policy`) lo evalúa de forma determinista.
+
+## Forma
+
+```yaml
+id: invoice-cancel-production
+version: 4
+priority: 100
+match:
+  action: invoice.cancel
+  resource_type: invoice
+rules:
+  - name: example
+    when:
+      field: resource.attributes.amount
+      op: gt
+      value: 10000000
+    effect: REQUIRE_APPROVAL
+    reason: High value
+    approval:
+      expires_in: 15m
+      approver_roles: [billing-manager]
+fallback: DENY
+```
+
+| Campo | Rol |
+| --- | --- |
+| `id` / slug | Identidad estable. |
+| `version` | Entero; al publicar, authorize usa la publicada, no el número del archivo suelto. |
+| `priority` | Más alto gana entre políticas que matchean la misma acción. |
+| `match.action` / `match.resource_type` | Filtro exacto. |
+| `rules[].when` | Condición; campos ausentes → la condición es falsa. |
+| `rules[].effect` | `ALLOW` \| `DENY` \| `REQUIRE_APPROVAL` |
+| `fallback` | Si ninguna regla matchea. Debe ser `DENY` en producción. |
+
+## Operadores
+
+`eq` `ne` `gt` `gte` `lt` `lte` `exists`
+
+Composición: `all:` (AND) y `any:` (OR).
+
+## Rutas de campo
+
+- `action`
+- `agent.id` `agent.environment`
+- `actor.id` `actor.type`
+- `resource.type` `resource.id` `resource.attributes.<clave>`
+- `context.<clave>`
+
+<Aside type="note">
+Un LLM puede **proponer** YAML. Nunca se publica solo: parseo → Test → revisión humana → Publish. Ver [Policies](/console/policies/).
+</Aside>

@@ -1,0 +1,11 @@
+id: "ide-debug-attach"
+version: 1
+priority: 100
+match:
+  action: "debug.attach"
+  resource_type: "debug"
+rules:
+  - name: "deny-debug-attach"
+    effect: "DENY"
+    reason: "IDE debugger attachment requires an administrator-authored allow policy."
+fallback: "DENY"

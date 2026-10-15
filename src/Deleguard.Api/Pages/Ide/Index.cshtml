@@ -1,0 +1,94 @@
+@page "/ide"
+@model Deleguard.Api.Pages.Ide.IndexModel
+@{
+    ViewData["Title"]="IDE Control"; ViewData["Nav"]="ide";
+    var project=Model.SelectedProject;
+    var coverage=project is null ? null : Model.Coverage.GetValueOrDefault(project.Id);
+    var sessions=Model.Sessions.Where(s=>s.ProjectId==project?.Id).ToList();
+    var connected=Model.Progress?.LastConnection is not null;
+    var reported=Model.Progress?.LastReportedResult is not null;
+}
+<partial name="_PageHeader" model='("IDE Control", "Tu proyecto, con límites claros para tu asistente. Prepara la protección y conecta tu editor desde aquí.")' />
+<partial name="_Flash" model="new FlashModel(Model.Message,Model.IsError)" />
+@if(Model.PendingApprovalId is not null){<p><a href="/approvals/@Model.PendingApprovalId">@T["Ver revisión administrativa pendiente →"]</a></p>}
+@if(Model.Projects.Count>0){
+    <div class="project-toolbar"><form method="get" class="row"><label for="current-project">@T["Proyecto"]</label><select id="current-project" name="project">@foreach(var p in Model.Projects){<option value="@p.Id" selected="@(p.Id==project?.Id ? "selected" : null)">@p.Name</option>}</select><button class="ghost">@T["Abrir"]</button></form>
+    @if(Model.CanQuickStart){<a class="button ghost" href="/ide?newProject=true">@T["+ Conectar otro proyecto"]</a>}</div>
+}
+<ol class="journey-steps" aria-label="@T["Progreso de configuración"]">
+    <li class="@(project is null ? "current" : "complete")"><span class="step-number">@(project is null ? "1" : "✓")</span><div><strong>@T["Prepara tu proyecto"]</strong><small>@(project is null ? T["Un nombre y tu editor"] : Model.ProfileReady ? T["Perfil preparado"] : T["Proyecto guardado · revisar reglas"])</small></div></li>
+    <li class="@(connected ? "complete" : project is not null ? "current" : "")"><span class="step-number">@(connected ? "✓" : "2")</span><div><strong>@T["Conecta el IDE"]</strong><small>@T["Instalador y clave del agente"]</small></div></li>
+    <li class="@(reported ? "complete" : connected ? "current" : "")"><span class="step-number">@(reported ? "✓" : "3")</span><div><strong>@T["Comprueba el resultado"]</strong><small>@T["Una operación con aprobación"]</small></div></li>
+</ol>
+@if(Model.Secret is not null && project is null){
+    <section class="card secret-card" aria-labelledby="secret-title"><span class="eyebrow">@T["Tu clave · se muestra una sola vez"]</span><h2 id="secret-title">@T["Guárdala para conectar el IDE"]</h2><p>@T["Paste this key in the visual installer. Save it in your password manager before leaving this page."]</p><div class="copy-line"><code id="ide-agent-key" class="hash">@Model.Secret</code><button type="button" class="ghost" data-copy data-copy-target="#ide-agent-key">@T["Copiar clave"]</button></div><p class="hint">@T["No la pegues en el chat del asistente ni en archivos del proyecto."]</p></section>
+}
+@if(project is null){
+<section id="project" class="setup-layout">
+    <div class="card setup-main"><span class="eyebrow">@T["01 / Preparación"]</span><h2 class="section-title">@T["¿En qué vas a trabajar?"]</h2><p class="muted">@T["Crearemos el agente y prepararemos las reglas iniciales en"] <strong>@Chrome.CurrentApplication?.Name</strong>.</p>
+    @if(Model.CanQuickStart && Model.Environments.Count>0){
+        <form method="post" asp-page-handler="QuickStart" class="stack" data-busy-form>
+            <input type="hidden" asp-for="ProjectId" />
+            <div><label asp-for="Name">@T["Nombre del proyecto"]</label><input asp-for="Name" required maxlength="120" placeholder="@T["Por ejemplo, mi tienda"]" autocomplete="off" /></div>
+            <fieldset class="choice-fieldset"><legend>@T["Tu editor"]</legend><div class="editor-choices">@foreach(var editor in new[]{("cursor","Cursor","C"),("vscode","VS Code","⌘"),("claude","Claude Code","✳")}){<label class="choice-card"><input type="radio" asp-for="Adapter" value="@editor.Item1" id="@("editor-"+editor.Item1)" /><span class="editor-symbol">@editor.Item3</span><strong>@editor.Item2</strong></label>}</div></fieldset>
+            <details class="advanced-options"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Opciones del proyecto"] <span class="muted">@T["· entorno y agente"]</span></summary><div class="stack">
+                <div><label asp-for="EnvironmentName">@T["Entorno del nuevo agente"]</label><select asp-for="EnvironmentName">@foreach(var env in Model.Environments){<option value="@env.Name">@env.Name</option>}</select><p class="hint">@T["Cada entorno conserva sus propias credenciales."]</p></div>
+                <div><label asp-for="AgentId">@T["Agente"]</label><select asp-for="AgentId"><option value="">@T["Crear uno para este proyecto (recomendado)"]</option>@foreach(var a in Model.Agents.Where(a=>a.Enabled)){<option value="@a.Id">@a.DisplayName · @a.EnvironmentName</option>}</select><p class="hint">@T["Si eliges uno existente, necesitarás su clave. Se conservarán sus asignaciones."]</p></div>
+            </div></details>
+            <label class="check-row"><input asp-for="CaseSensitive" /><span>@T["La carpeta distingue mayúsculas y minúsculas"] <small class="hint">@T["Habitual en Linux. Confirma el sistema de archivos del equipo donde instalarás; no se puede cambiar después."]</small></span></label>
+            <p class="hint">@T["Entorno inicial:"] <strong>@Model.EnvironmentName</strong>@T[". El agente identifica a tu asistente. El perfil se prueba y publica al continuar."]</p>
+            <button type="submit" data-busy-label="@T["Preparando proyecto…"]">@T["Preparar proyecto y continuar →"]</button>
+        </form>
+    }else{<p>@T["Un administrador con permisos sobre agentes, acciones y políticas puede preparar la conexión. También necesitas un entorno disponible en esta aplicación."]</p><a href="/start">@T["Ver los pasos disponibles para mi usuario →"]</a>}
+    </div>
+    <aside class="card profile-preview"><span class="eyebrow">@T["Incluido para empezar"]</span><h2 class="section-title">@T["Desarrollo equilibrado"]</h2><p>@T["Un perfil inicial que puedes personalizar después."]</p>
+        <ul class="profile-rules"><li><span class="status-dot allow-dot"></span><div><strong>@T["Archivos en src"]</strong><small>@T["Operaciones cubiertas por sus reglas."]</small></div></li><li><span class="status-dot wait-dot"></span><div><strong>@T["Revisión humana"]</strong><small>@T["infra/production, procesos y llamadas MCP reconocidas."]</small></div></li><li><span class="status-dot deny-dot"></span><div><strong>@T["Resto bloqueado por defecto"]</strong><small>@T["Otras rutas y categorías sin permiso explícito."]</small></div></li></ul>
+        <p class="hint">@T["Cada operación tiene su propia regla. El perfil registra 22 categorías; no todas están permitidas ni cubiertas por todos los IDE."]</p><div class="quiet-note">@T["Solo metadatos y hashes por defecto. Compartir cambios de código es opcional."]</div>
+    </aside>
+</section>
+}else{
+    <section id="policies" class="card readiness-card"><div><span class="eyebrow">@T["01 / Proyecto guardado"]</span><h2 class="section-title">@project.Name</h2><p>@(Model.ProfileReady ? T["Las reglas están publicadas y asignadas. Continúa con la conexión del editor."] : T["Revisa el estado de las reglas antes de probar la conexión."])</p></div><span class="badge @(Model.ProfileReady ? "allow" : "wait")">@(coverage is null ? T["Estado de reglas no disponible"] : T.Format("rules.ready", coverage.Count(x=>x.IsReady), coverage.Count))</span>
+    @if(!Model.ProfileReady && Model.CanPublish){<form method="post" asp-page-handler="ApplyProfile" class="stack" data-busy-form><input type="hidden" asp-for="ProjectId" /><input type="hidden" asp-for="Adapter" /><input type="hidden" name="Profile" value="balanced-development" /><p>@T["Retoma Desarrollo equilibrado: archivos en src según la acción, aprobación en infra/production y el resto bloqueado por defecto. Conserva reglas personalizadas."]</p><button data-busy-label="@T["Comprobando reglas…"]">@T["Preparar reglas pendientes"]</button></form>}</section>
+}
+@if(Model.AppliedProfile is not null || Model.Prepared is not null){
+    <details class="card" open="@(!Model.ProfileReady ? "open" : null)"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Resultado de la preparación de reglas"]</summary>
+    @foreach(var item in Model.AppliedProfile?.Items ?? Model.Prepared!.Items){
+        var explanation=item.Status switch {
+            "published" or "already_published" => "Regla publicada, asignada y comprobada.",
+            "needs_action_configuration" => "Esta acción ya existe. Revisa su tipo de recurso y asigna el agente del proyecto; después retoma la preparación.",
+            "needs_policy_assignment" => "Revisa la asignación de esta política al agente del proyecto.",
+            "needs_publication_authorization" => "Borrador guardado. La publicación necesita autorización administrativa.",
+            "needs_policy_review" => "La regla o sus pruebas necesitan revisión. Conservamos tus cambios para que puedas verificarlos en el editor.",
+            "draft_created" => "Borrador y pruebas guardados. Revisa la regla y publícala para activarla.",
+            "existing" => "Conservamos la regla existente. Revisa sus versiones y asignaciones.",
+            _ => item.Message
+        };
+        <p><strong>@item.Action</strong> · @T[explanation]
+        @if(item.PolicyId is not null){<a href="/policies/@item.PolicyId">@T["Revisar regla →"]</a>}
+        else{<a href="/actions?q=@Uri.EscapeDataString(item.Action)">@T["Revisar acción y agente →"]</a>}</p>
+    }</details>
+}
+@if(project is not null){
+    @if(Model.Progress is {} progress){<section class="card progress-card" data-ide-progress="@project.Id"><div class="card-head"><h2>@T["Connection and first operation"]</h2><a href="/ide?project=@project.Id#install">@T["Actualizar estado ↻"]</a></div><ol class="journey-steps compact-journey">
+        <li class="@(progress.LastConnection is not null?"complete":"")"><span class="step-number">1</span><div><strong>@T["Connection received"]</strong><small>@(progress.LastConnection is not null?T["Adapter contacted this project"]:T["Waiting for your editor"])</small></div></li>
+        <li class="@(progress.LastDecision is not null?"complete":"")"><span class="step-number">2</span><div><strong>@T["Protected request evaluated"]</strong><small>@(progress.LastDecision is not null?T["Decision recorded from the IDE"]:T["Run the approval test below"])</small></div></li>
+        <li class="@(progress.LastReportedResult is not null?"complete":"")"><span class="step-number">3</span><div><strong>@T["Resultado reportado"]</strong><small>@(progress.LastReportedResult is not null?T["Client result received"]:T["Waiting for the adapter's report"])</small></div></li>
+    </ol><p class="hint">@T["These are recorded events for this project. A connection alone does not prove coverage, and a client report does not independently verify execution."]</p>@if(progress.DecisionId is not null){<a href="/audit/decisions/@progress.DecisionId">@T["Open the latest operation →"]</a>}</section>}
+    <partial name="_InstallGuide" model="Model" />
+    <section id="verify" class="card"><span class="eyebrow">@T["03 / Primera comprobación"]</span><h2 class="section-title">@T["Comprueba que tu asistente pide permiso"]</h2><p>@T["Crea tú mismo"] <code>infra/production/prueba.txt</code> @T["con un texto sin secretos. Reinicia el IDE y habilita los hooks si te lo solicita."]</p>
+        <div class="prompt-example"><p id="verify-prompt">@T["Lee únicamente infra/production/prueba.txt con tu herramienta de lectura de archivos, sin usar la terminal."]</p><button type="button" class="ghost" data-copy data-copy-target="#verify-prompt">@T["Copiar prueba"]</button></div>
+        <ol class="plain-steps"><li>@T["Pide esa operación a tu asistente: debe detenerse y solicitar aprobación."]</li><li>@T["Abre"] <a href="/approvals">@T["Aprobaciones"]</a>@T[", comprueba la ruta y aprueba. Reintenta la misma operación desde el IDE."]</li><li>@T["Revisa la decisión y el resultado en"] <a href="/audit/activity?AgentId=@project.AgentId">@T["Actividad de este agente"]</a>@T[". Repite otra operación y recházala: no debe entregar el contenido."]</li></ol><p class="hint">@T["Si entrega contenido sin aprobación, la protección no está comprobada. El resultado es reportado por la integración; una conexión recibida no certifica la cobertura."]</p>
+        <details class="advanced-options"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Resolver un problema de conexión"]</summary><dl class="help-facts"><dt>@T["No aparece la aprobación"]</dt><dd>@T["Revisa hooks cargados, carpeta correcta y herramienta cubierta. Una regla que deniega no crea una aprobación."]</dd><dt>@T["La acción está denegada"]</dt><dd>@T["Comprueba regla publicada, agente asignado y ruta contemplada."] <a href="/actions/coverage?AgentId=@project.AgentId">@T["Revisar asignaciones"]</a>.</dd><dt>@T["Aprobé, pero sigue bloqueado"]</dt><dd>@T["Reintenta la misma herramienta y archivo. Revisa caducidad y cambios de contenido. Si el resultado es desconocido, inspecciona el archivo antes de otra operación."]</dd><dt>@T["No tengo la clave"]</dt><dd><a href="#api-key">@T["Generate a new API key here"]</a>. @T["Replacing it invalidates the previous key for every connection using this agent."]</dd></dl></details>
+    </section>
+    <details class="card"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Conexiones recibidas"] <span class="badge neutral">@sessions.Count</span></summary>@if(sessions.Count==0){<p>@T["Aún no hay sesiones visibles de este proyecto. Realiza una operación desde el IDE; el diagnóstico no crea una sesión."]</p>}@foreach(var s in sessions){<article><h3>@s.Adapter · @s.Platform</h3><p>@T["Último contacto:"] @s.LastSeenAt.ToString("u") @T["· Versión"] @s.Version</p><details><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Cobertura reportada"]</summary><p>@T["controlled: controlada · observed: observada · uncovered: sin cobertura. Son datos reportados por la integración."]</p><pre>@s.CapabilitiesJson</pre></details></article>}</details>
+    <details id="project-settings" class="card"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Configuración avanzada del proyecto"]</summary>
+    @if(Model.CanWrite){<form method="post" asp-page-handler="Save" class="stack"><input type="hidden" asp-for="ProjectId" /><input type="hidden" name="AgentId" value="@project.AgentId" /><input type="hidden" name="CaseSensitive" value="@project.CaseSensitive.ToString().ToLowerInvariant()" /><input type="hidden" asp-for="Adapter" />
+        <div><label asp-for="Name">@T["Nombre del proyecto"]</label><input asp-for="Name" required maxlength="120" /></div><div><label asp-for="ProtectedPaths">@T["Carpetas que necesitan aprobación"]</label><textarea asp-for="ProtectedPaths" rows="3"></textarea><p class="hint">@T["Una ruta relativa por línea. Usa . para todo el proyecto."]</p></div><div><label asp-for="DeniedPaths">@T["Carpetas bloqueadas"]</label><textarea asp-for="DeniedPaths" rows="3"></textarea></div><label class="check-row"><input asp-for="ShareDiff" /><span>@T["Compartir una vista previa del cambio cuando la herramienta la proporcione. Puede contener código."]</span></label><button>@T["Guardar cambios"]</button></form>
+        <form method="post" asp-page-handler="Prepare"><input type="hidden" asp-for="ProjectId" /><input type="hidden" asp-for="Adapter" /><button class="ghost">@T["Preparar borradores para personalizar"]</button></form>}
+        <p class="hint">@T["Identificador:"] @project.Id@T[". El agente y la distinción de mayúsculas se fijan al crear el proyecto."]</p>
+    </details>
+    <details class="card"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Acceso temporal a carpetas"]</summary><p>@T["Solo satisface la revisión añadida por el proyecto cuando la política permite la acción. Nunca supera una prohibición o una aprobación exigida por la política."]</p>
+    @if(Model.CanGrant){<form method="post" asp-page-handler="Grant" class="stack"><input type="hidden" asp-for="ProjectId" /><input type="hidden" asp-for="Adapter" /><label asp-for="Directory">@T["Carpeta relativa"]</label><input asp-for="Directory" required /><label asp-for="Minutes">@T["Duración en minutos"]</label><input asp-for="Minutes" type="number" min="1" max="60" /><fieldset><legend>@T["Operaciones"]</legend>@foreach(var a in new[]{"filesystem.read","filesystem.list","filesystem.search","filesystem.create","filesystem.write","filesystem.move"}){<label class="check-row"><input type="checkbox" name="Actions" value="@a" checked="@(a=="filesystem.read")" /> @a</label>}</fieldset><button>@T["Conceder acceso temporal"]</button></form>}
+    @foreach(var g in Model.Grants.Where(g=>g.ProjectId==project.Id)){<div class="quiet-note"><p>@g.Directory · @g.ActionsJson @T["· Vence"] @g.ExpiresAt.ToString("u") · @(g.RevokedAt is not null ? T["Revocado"] : g.ExpiresAt<=DateTimeOffset.UtcNow ? T["Vencido"] : T["Activo"])</p>@if(Model.CanGrant && g.RevokedAt is null){<form method="post" asp-page-handler="Revoke"><input type="hidden" name="id" value="@g.Id" /><input type="hidden" asp-for="ProjectId" /><button class="ghost">@T["Revocar"]</button></form>}</div>}
+    </details>
+}

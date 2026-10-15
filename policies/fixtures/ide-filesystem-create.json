@@ -1,0 +1,261 @@
+[
+  {
+    "name": "source",
+    "expected": "ALLOW",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src/main.cs"
+      }
+    }
+  },
+  {
+    "name": "source-root",
+    "expected": "ALLOW",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src"
+      }
+    }
+  },
+  {
+    "name": "protected-read-or-write",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "infra/production/config.yaml"
+      }
+    }
+  },
+  {
+    "name": "protected-root",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "infra/production"
+      }
+    }
+  },
+  {
+    "name": "integration-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": ".deleguard/hooks.json"
+      }
+    }
+  },
+  {
+    "name": "integration-root",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": ".deleguard"
+      }
+    }
+  },
+  {
+    "name": "unknown",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "docs/readme.md"
+      }
+    }
+  },
+  {
+    "name": "source-lookalike",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src0/main.cs"
+      }
+    }
+  },
+  {
+    "name": "protected-lookalike",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "infra/production-old/config"
+      }
+    }
+  },
+  {
+    "name": "traversal",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src/../infra/production/config"
+      }
+    }
+  },
+  {
+    "name": "windows-separator",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src\\main.cs"
+      }
+    }
+  },
+  {
+    "name": "dot-segment",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src/./main.cs"
+      }
+    }
+  },
+  {
+    "name": "absolute",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "/src/main.cs"
+      }
+    }
+  },
+  {
+    "name": "case-mismatch",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "SRC/main.cs"
+      }
+    }
+  },
+  {
+    "name": "duplicate-separator",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src//main.cs"
+      }
+    }
+  },
+  {
+    "name": "client-protected-false-cannot-bypass",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "infra/production/config",
+        "protected": false
+      }
+    }
+  },
+  {
+    "name": "wrong-project",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "different",
+        "path": "src/main.cs"
+      }
+    }
+  },
+  {
+    "name": "missing-project",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "path": "src/main.cs"
+      }
+    }
+  },
+  {
+    "name": "missing-path",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.create",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo"
+      }
+    }
+  },
+  {
+    "name": "unknown-action",
+    "expected": "DENY",
+    "request": {
+      "action": "filesystem.unknown",
+      "resource_type": "filesystem",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo",
+        "path": "src/main.cs"
+      }
+    }
+  }
+]

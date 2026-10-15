@@ -1,0 +1,30 @@
+id: invoice-cancel-production
+version: 4
+priority: 100
+match:
+  action: invoice.cancel
+  resource_type: invoice
+rules:
+  - name: never-cancel-tax-reported
+    when:
+      field: resource.attributes.reportedToTaxAuthority
+      op: eq
+      value: true
+    effect: DENY
+    reason: Tax-reported invoices require a separate regulated process
+  - name: high-value-approval
+    when:
+      field: resource.attributes.amount
+      op: gt
+      value: 10000000
+    effect: REQUIRE_APPROVAL
+    approval:
+      expires_in: 15m
+      approver_roles: [billing-manager]
+  - name: allow-draft-low-risk
+    when:
+      all:
+        - { field: resource.attributes.status, op: eq, value: draft }
+        - { field: resource.attributes.amount, op: lte, value: 10000000 }
+    effect: ALLOW
+fallback: DENY

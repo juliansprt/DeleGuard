@@ -1,0 +1,13 @@
+---
+description: Docker and operations rules for Deleguard local/prod compose.
+globs: "deploy/**,**/Dockerfile*"
+alwaysApply: false
+---
+
+# Docker ops
+
+- Secrets come from environment variables, never baked into the image.
+- Redis is optional cache, not the source of truth. Postgres holds decisions, permits, and audit.
+- API and worker share one image; select the process with `DELEGUARD_ENTRYPOINT`.
+- Keep healthchecks on Postgres, the API, and the docs site. Fail closed if the API cannot reach Postgres.
+- The `docs` service is the Starlight site on host port 4321. It does not sit on the ALLOW/DENY path.

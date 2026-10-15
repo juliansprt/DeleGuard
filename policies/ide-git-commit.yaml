@@ -1,0 +1,11 @@
+id: "ide-git-commit"
+version: 1
+priority: 100
+match:
+  action: "git.commit"
+  resource_type: "git"
+rules:
+  - name: "deny-git-commit"
+    effect: "DENY"
+    reason: "IDE Git commit requires an administrator-authored allow policy."
+fallback: "DENY"

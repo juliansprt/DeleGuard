@@ -1,0 +1,40 @@
+---
+title: Approvals
+description: Human review queue for canonical facts, request detail, Approve once, and Deny.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Approvals** (`/approvals`) is under **Work**. A human decides on an action the policy marked `REQUIRE_APPROVAL`. Agent prose is **never** shown: canonical facts only.
+
+## Queue
+
+When nothing is pending:
+
+![Empty Approvals: You’re all caught up, Open Playground link](/console/approvals.png)
+
+**Open Playground** creates a real case: authorize a high-value `invoice.cancel` (the **High** chip) and a **Needs approval** card lands here.
+
+When items exist, each card shows a headline, expiry, and a fact excerpt. Click opens `/approvals/{id}`.
+
+## Detail
+
+![invoice.cancel · FAC-HIGH detail with canonical facts Agent, Action, Amount, Resource](/console/approval-detail.png)
+
+<Steps>
+
+1. Read the facts: Agent, Action, Amount, Resource, Environment, Status, Type, Actor, Policy, Expires.
+2. If status is **Pending**, choose:
+   - **Approve once** — issues a short-lived permit. The agent may execute **that** action, not a blank check.
+   - **Deny** — confirm; the agent receives DENY.
+3. **Technical details** exposes `decision_id`, `approval_id`, and the facts JSON.
+
+</Steps>
+
+The screenshot above shows an **Expired** request: buttons disappear when the worker (or the clock) closes the window. Authorize again from Playground or the agent to create a new one.
+
+<Aside type="caution" title="Approve once">
+There is no “approve until Friday” in the MVP. One approval = one bounded permit. If the resource changes materially (TOCTOU), authorize again.
+</Aside>
+
+Equivalent API (console token, not agent): `POST /v1/approvals/{id}/approve` and `/deny`.

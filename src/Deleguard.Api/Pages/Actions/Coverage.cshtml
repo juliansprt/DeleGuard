@@ -1,0 +1,6 @@
+@page "/actions/coverage"
+@model Deleguard.Api.Pages.Actions.CoverageModel
+@{ ViewData["Title"] = "Action coverage"; ViewData["Nav"] = "actions"; }
+<partial name="_PageHeader" model='("Action coverage", "Follow each assignment from agent to action to published policy. Ready to evaluate does not mean every request will be allowed.")' />
+<div class="row"><a href="/actions">@T["Manage actions"]</a><a href="/actions/coverage">@T["All assignments"]</a><a href="/actions/coverage?filter=missing">@T["Needs configuration"]</a></div>
+<partial name="_Coverage" model="Model.Rows" />

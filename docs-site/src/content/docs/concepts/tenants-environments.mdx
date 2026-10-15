@@ -1,0 +1,14 @@
+---
+title: Tenants y entornos
+description: Aislamiento de organización y por qué production y staging no comparten API keys.
+---
+
+Cada decisión, agente, política y evento de audit lleva `organization_id`. La consola demo opera sobre `org_demo`. No hay selector de org en el MVP: un token ve un tenant.
+
+Los **entornos** (`production`, `staging`, …) cuelgan de la org. Se gestionan en la consola (`/environments`), `GET`/`POST`/`PATCH`/`DELETE` `/v1/environments`, o las tools MCP `environment_list|get|create|update|delete`. Al crear un agente eliges uno. Una API key de production **no** debe autorizar un agente de staging. El MCP de Administración expone las guías de este entorno con `docs_list` / `docs_get` (prompt `configure-environment`); el sitio está en `http://localhost:4321`.
+
+Políticas publicadas se evalúan en el contexto del agente autenticado. Mantén sets de política distintos por entorno si las reglas de negocio difieren (umbrales, aprobadores).
+
+La organización debe conservar al menos un entorno. El borrado falla cerrado si aún hay agentes. Renombrar conserva el id `env_…`; authorize debe enviar el nombre nuevo.
+
+En Compose y en local el seed crea un solo entorno `production`: añade `staging` cuando necesites aislamiento.

@@ -1,0 +1,172 @@
+# Restrictive example; configure project identity and run fixtures before publishing.
+id: "ide-filesystem-move"
+version: 1
+priority: 100
+match:
+  action: "filesystem.move"
+  resource_type: "filesystem"
+rules:
+  - name: "deny-noncanonical-path"
+    when:
+      any:
+        - field: "resource.attributes.path"
+          op: "contains"
+          value: ".."
+        - field: "resource.attributes.path"
+          op: "contains"
+          value: "\\"
+        - field: "resource.attributes.path"
+          op: "contains"
+          value: "//"
+        - field: "resource.attributes.path"
+          op: "contains"
+          value: "/./"
+        - field: "resource.attributes.destination_path"
+          op: "contains"
+          value: ".."
+        - field: "resource.attributes.destination_path"
+          op: "contains"
+          value: "\\"
+        - field: "resource.attributes.destination_path"
+          op: "contains"
+          value: "//"
+        - field: "resource.attributes.destination_path"
+          op: "contains"
+          value: "/./"
+    effect: "DENY"
+  - name: "deny-integration-directory"
+    when:
+      any:
+        - any:
+            - field: "resource.attributes.path"
+              op: "eq"
+              value: ".deleguard"
+            - all:
+                - field: "resource.attributes.path"
+                  op: "gte"
+                  value: ".deleguard/"
+                - field: "resource.attributes.path"
+                  op: "lt"
+                  value: ".deleguard0"
+        - any:
+            - field: "resource.attributes.destination_path"
+              op: "eq"
+              value: ".deleguard"
+            - all:
+                - field: "resource.attributes.destination_path"
+                  op: "gte"
+                  value: ".deleguard/"
+                - field: "resource.attributes.destination_path"
+                  op: "lt"
+                  value: ".deleguard0"
+    effect: "DENY"
+  - name: "review-protected-directory"
+    when:
+      all:
+        - field: "resource.attributes.project_id"
+          op: "eq"
+          value: "ide-demo"
+        - any:
+            - any:
+                - field: "resource.attributes.path"
+                  op: "eq"
+                  value: "src"
+                - all:
+                    - field: "resource.attributes.path"
+                      op: "gte"
+                      value: "src/"
+                    - field: "resource.attributes.path"
+                      op: "lt"
+                      value: "src0"
+            - any:
+                - field: "resource.attributes.path"
+                  op: "eq"
+                  value: "infra/production"
+                - all:
+                    - field: "resource.attributes.path"
+                      op: "gte"
+                      value: "infra/production/"
+                    - field: "resource.attributes.path"
+                      op: "lt"
+                      value: "infra/production0"
+        - any:
+            - any:
+                - field: "resource.attributes.destination_path"
+                  op: "eq"
+                  value: "src"
+                - all:
+                    - field: "resource.attributes.destination_path"
+                      op: "gte"
+                      value: "src/"
+                    - field: "resource.attributes.destination_path"
+                      op: "lt"
+                      value: "src0"
+            - any:
+                - field: "resource.attributes.destination_path"
+                  op: "eq"
+                  value: "infra/production"
+                - all:
+                    - field: "resource.attributes.destination_path"
+                      op: "gte"
+                      value: "infra/production/"
+                    - field: "resource.attributes.destination_path"
+                      op: "lt"
+                      value: "infra/production0"
+        - any:
+            - any:
+                - field: "resource.attributes.path"
+                  op: "eq"
+                  value: "infra/production"
+                - all:
+                    - field: "resource.attributes.path"
+                      op: "gte"
+                      value: "infra/production/"
+                    - field: "resource.attributes.path"
+                      op: "lt"
+                      value: "infra/production0"
+            - any:
+                - field: "resource.attributes.destination_path"
+                  op: "eq"
+                  value: "infra/production"
+                - all:
+                    - field: "resource.attributes.destination_path"
+                      op: "gte"
+                      value: "infra/production/"
+                    - field: "resource.attributes.destination_path"
+                      op: "lt"
+                      value: "infra/production0"
+    effect: "REQUIRE_APPROVAL"
+    approval:
+      expires_in: "15m"
+      approver_roles:
+        - "org-admin"
+  - name: "allow-source-directory"
+    when:
+      all:
+        - field: "resource.attributes.project_id"
+          op: "eq"
+          value: "ide-demo"
+        - any:
+            - field: "resource.attributes.path"
+              op: "eq"
+              value: "src"
+            - all:
+                - field: "resource.attributes.path"
+                  op: "gte"
+                  value: "src/"
+                - field: "resource.attributes.path"
+                  op: "lt"
+                  value: "src0"
+        - any:
+            - field: "resource.attributes.destination_path"
+              op: "eq"
+              value: "src"
+            - all:
+                - field: "resource.attributes.destination_path"
+                  op: "gte"
+                  value: "src/"
+                - field: "resource.attributes.destination_path"
+                  op: "lt"
+                  value: "src0"
+    effect: "ALLOW"
+fallback: "DENY"

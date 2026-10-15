@@ -1,0 +1,26 @@
+@model Deleguard.Api.Pages.Ide.IndexModel
+@{ var releases=PortableReleases.Platforms.Select(p=>PortableReleases.Find(Context,p)).Where(p=>p is not null).ToList(); }
+<section id="install" class="card setup-main">
+    <span class="eyebrow">@T["02 / Conexión"]</span><h2 class="section-title">@T["Connect this project in three steps"]</h2>
+    <p>@T["Open the portable app, choose a folder and connect. The runtime is included; you do not need Python or a terminal."]</p>
+    <partial name="_AgentKey" model="Model" />
+    <ol class="plain-steps portable-steps">
+        <li><strong>@T["Download your connection profile"]</strong><p>@T["It identifies this server, organization, application and agent. It contains no API key."]</p>
+            <form method="get" action="/ide/connection-profile" class="row"><input type="hidden" name="project" value="@Model.ProjectId" />
+                <label for="portable-editor">@T["Editor"]</label><select id="portable-editor" name="adapter"><option value="cursor" selected="@(Model.Adapter=="cursor")">Cursor</option><option value="vscode" selected="@(Model.Adapter=="vscode")">VS Code / Copilot</option><option value="claude" selected="@(Model.Adapter=="claude")">Claude Code</option></select>
+                <button class="ghost">@T["Download profile"]</button>
+            </form></li>
+        <li><strong>@T["Open the portable installer"]</strong><p>@T["Extract the whole package and open DeleGuard. Import the profile, select this project's folder and paste its key."]</p>
+            @foreach(var release in releases){<p><a class="button" href="/ide/installer?platform=@release!.Platform">@T["Download installer"] · @release.Platform</a> @if(!release.Signed){<span class="badge wait">@T["Local validation build · unsigned"]</span>}</p>}
+            @if(releases.Count==0){<p class="quiet-note" role="status">@T["No verified installer is available on this server yet. Your project and profile are ready; ask your administrator to add a tested, signed package for your platform."]</p>}
+        </li>
+        <li><strong>@T["Review, connect and test"]</strong><p>@T["Review the files, connect and restart your editor. Then run the approval test below."]</p><a href="#verify">@T["Test the first protected operation →"]</a></li>
+    </ol>
+    <details class="advanced-options"><summary>@T["Multiple projects, updates and local credentials"]</summary><div class="stack">
+        <p>@T["Run the installer again for each folder. Projects can use different accounts or servers on the same computer; no DeleGuard configuration is stored globally."]</p>
+        <p>@T["An existing connection can be checked or updated without rotating its API key. To change accounts, disconnect that installation explicitly or choose another folder."]</p>
+        <p>@T["Windows encrypts the key in the project with your user account. On macOS and Linux, choose a password for this project's vault and unlock it for each session."]</p>
+        <p>@T["Disconnecting removes only this installation's managed files and hooks. Its operation history is archived locally; shared remote keys remain valid."]</p>
+    </div></details>
+    <p class="hint"><strong>@T["Cobertura parcial:"]</strong> @T["se controlan los eventos compatibles con cada IDE. La indexación y los procesos iniciados fuera del asistente no están cubiertos."]</p>
+</section>

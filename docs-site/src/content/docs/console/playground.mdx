@@ -1,0 +1,37 @@
+---
+title: Playground
+description: Probar ALLOW, DENY y REQUIRE_APPROVAL con tus agentes y actions, por el mismo camino que un agente real.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Playground** (`/playground`) llama de verdad a `POST /v1/authorize` como el agente que eliges. No pegas un `dgk_…` de producción: Deleguard vincula ese agente a esta petición de consola (no rota keys ni las muestra). La sesión de consola no se hace pasar por el agente en `POST /v1/authorize`. [Policy Test](/console/policies/) es un dry-run; esta página **escribe** la decisión.
+
+![Playground con el formulario de authorize y el panel de decisión](/console/playground.png)
+
+## Tu configuración
+
+El formulario lista los **agentes**, **actions** y **políticas publicadas** del tenant. El environment lo fija el agente. Authorize usa la política publicada de esa action (los drafts no cuentan). El navegador recuerda agente, action y atributos en `localStorage` (nunca en el servidor).
+
+Hace falta `agents.write` para Authorize. Si quieres una credencial concreta, ábrela en **Use a specific agent key**. Pegar esa key **no** inicia sesión en la consola.
+
+<Aside type="caution">
+Los tokens de consola (`dgc_`) y del MCP de Administración (`dgm_`) no autorizan en `POST /v1/authorize`. Playground autentica en proceso el agente elegido (o una `dgk_` de producción, si la pegas).
+</Aside>
+
+## Recorrido
+
+<Steps>
+
+1. Elige un **Agent**. No pegues su key.
+2. Elige una **Action** de tu catálogo. Debajo verás la política publicada (o un aviso de DENY si no hay). `resource_type` se rellena solo.
+3. Los chips **ALLOW** / **APPROVAL** / **DENY** rellenan `resource_id` y atributos JSON generados desde las reglas publicadas de esa action.
+4. Pulsa **Authorize**. Lee el badge, el `reason` y el `decision_id`.
+5. Si hay `approval_id`, **Open approval** salta a [Approvals](/console/approvals/).
+6. Tras un ALLOW con permit, **Report execution** llama `POST /v1/executions` (evidencia; no muta un ERP vecino).
+
+</Steps>
+
+<Aside type="note">
+Sin ALLOW y permit activo, un agente real no debe ejecutar. Playground muestra esa regla: Report execution solo aparece con permit.
+</Aside>

@@ -1,0 +1,49 @@
+@model Deleguard.Api.Pages.Ide.IndexModel
+<section id="api-key" class="quiet-note" aria-labelledby="api-key-title">
+    <h3 id="api-key-title">@T["API key for the installer"]</h3>
+    <p>@T["Use this project’s agent key in the downloaded installer."] <strong>@Model.ProjectAgent?.DisplayName</strong></p>
+    @if (Model.Secret is not null)
+    {
+        <p><strong>@T["Tu clave · se muestra una sola vez"]</strong></p>
+        <div class="copy-line"><code id="ide-agent-key" class="hash">@Model.Secret</code><button type="button" class="ghost" data-copy data-copy-target="#ide-agent-key">@T["Copy API key"]</button></div>
+        <p>@T["The API key stays separate from the connection profile. Paste it only into the installer for this project."]</p>
+        <p class="hint">@T["Paste this key in the visual installer. Save it in your password manager before leaving this page."] @T["No la pegues en el chat del asistente ni en archivos del proyecto."]</p>
+    }
+    else
+    {
+        @if (Model.ProjectAgent?.ActiveKeyPrefix is { } prefix)
+        {
+            <p class="hint">@T["Current key prefix"]: <code>@prefix…</code></p>
+        }
+        @if (Model.CanGenerateKey)
+        {
+            <form method="post" asp-page-handler="GenerateKey" asp-fragment="api-key">
+                <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                <input type="hidden" name="Adapter" value="@Model.Adapter" />
+                <input type="hidden" name="currentKeyPrefix" value="@Model.ProjectAgent?.ActiveKeyPrefix" />
+                <button type="submit" data-confirm
+                        data-confirm-title="@T["Generate a new key for this agent?"]"
+                        data-confirm-body="@T["The previous key will stop working immediately, including in other projects using this agent. Copy the new key and reconnect those installations."]"
+                        data-confirm-action="@T["Generate API key"]">@T["Generate new API key"]</button>
+            </form>
+            <p class="hint">@T["Already have the key? Keep using it; generating another is optional."] @T["Replacing it invalidates the previous key for every connection using this agent."]</p>
+        }
+        else
+        {
+            <p class="hint">@(Model.ProjectAgent?.Enabled == false ? T["This project's agent is disabled. Enable it before generating an API key."] : T["You need agent management permission to generate a key. Ask your administrator to generate it for this project."])</p>
+        }
+    }
+</section>
+@if (Model.CanGenerateKey && Model.Secret is null)
+{
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+        <form method="dialog" class="stack">
+            <h2 id="confirm-title">@T["Confirm"]</h2>
+            <p id="confirm-body" class="muted"></p>
+            <p class="row" style="margin:0">
+                <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+            </p>
+        </form>
+    </dialog>
+}

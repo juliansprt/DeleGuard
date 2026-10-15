@@ -1,0 +1,32 @@
+[
+  {
+    "name": "draft-low-allow",
+    "expected": "ALLOW",
+    "request": {
+      "action": "invoice.cancel",
+      "resource_type": "invoice",
+      "resource_id": "FAC-1",
+      "attributes": { "status": "draft", "amount": 5000000, "reportedToTaxAuthority": false }
+    }
+  },
+  {
+    "name": "high-value-approval",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "invoice.cancel",
+      "resource_type": "invoice",
+      "resource_id": "FAC-8392",
+      "attributes": { "status": "issued", "amount": 35000000, "reportedToTaxAuthority": false }
+    }
+  },
+  {
+    "name": "tax-reported-deny",
+    "expected": "DENY",
+    "request": {
+      "action": "invoice.cancel",
+      "resource_type": "invoice",
+      "resource_id": "FAC-9",
+      "attributes": { "status": "issued", "amount": 1000, "reportedToTaxAuthority": true }
+    }
+  }
+]

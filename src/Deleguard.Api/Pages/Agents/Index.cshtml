@@ -1,0 +1,108 @@
+@page "/agents"
+@model Deleguard.Api.Pages.Agents.IndexModel
+@{
+    ViewData["Title"] = "Agentes";
+    ViewData["Nav"] = "agents";
+}
+
+<partial name="_PageHeader" model='("Agentes", "Conecta los asistentes y servicios que realizarán operaciones en tu aplicación.")' />
+
+@if (Model.CanWrite) { <p><a class="button" href="/agents/connect">@T["Conectar agente"]</a></p> }
+
+@if (!string.IsNullOrEmpty(Model.RevealedKey))
+{
+    <div class="flash flash-secret" role="status" aria-live="polite">
+        <p style="margin:0 0 0.5rem"><strong>@T["Store this API key now."]</strong> @T["It will not be shown again."]</p>
+        <p class="secret" id="revealed-key">@Model.RevealedKey</p>
+        <p class="muted" style="margin:0.75rem 0 0">@T["Do not paste this key into chats, tickets, or logs."] <code>dgc_</code> @T["console tokens and"] <code>dgm_</code> @T["MCP tokens cannot call"] <code>/v1/authorize</code>.</p>
+        <p class="row" style="margin:0.75rem 0 0">
+            <button type="button" class="ghost" data-copy-target="#revealed-key" data-copy>@T["Copy"]</button>
+            <a class="button ghost" href="/playground">@T["Open Playground"]</a>
+            <span class="muted">@T["Prefix"] @Model.RevealedPrefix</span>
+        </p>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+@if (Model.CanWrite)
+{
+    <details class="card create-panel" id="add-agent" @(Model.IsError ? "open" : null)>
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Add agent"]</summary>
+        <div class="create-panel-body">
+            <form method="post" asp-page-handler="Create" class="stack">
+                <p>
+                    <label for="ExternalId">@T["External id"]</label>
+                    <input asp-for="ExternalId" placeholder="invoice-agent" autocomplete="off" />
+                    <span class="hint">@T["Lowercase slug. This is"] <code>agent.id</code> @T["in audit and approvals."]</span>
+                </p>
+                <p>
+                    <label for="DisplayName">@T["Display name"]</label>
+                    <input asp-for="DisplayName" placeholder="@T["Invoice Agent"]" />
+                </p>
+                <p>
+                    <label for="EnvironmentName">@T["Environment"]</label>
+                    <select asp-for="EnvironmentName" id="agent-environment">
+                        @foreach (var env in Model.Environments)
+                        {
+                            <option value="@env.Name">@env.Name</option>
+                        }
+                    </select>
+                    <span class="hint">@T["A production key must not be used in staging."] <a href="/environments">@T["Manage environments"]</a></span>
+                    <span class="hint" data-env-warning hidden>@T["You are creating a production identity. Isolate this key from non-production agents."]</span>
+                </p>
+                <p class="hint">@T["The key identifies the workload. Actor identity comes from your app, not from this form."]</p>
+                <button type="submit">@T["Create agent"]</button>
+            </form>
+        </div>
+    </details>
+}
+
+<div class="card">
+    <h2>@T["Registered agents"]</h2>
+    @if (Model.Agents.Count == 0)
+    {
+        @if (Model.CanWrite)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No agents yet", "Create an agent so authorize calls are attributable.", "#add-agent", "Create an agent")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No agents yet", "An operator or org-admin registers agents so authorize calls are attributable.")' />
+        }
+    }
+    else
+    {
+        <partial name="_AgentTable" model="Model" />
+    }
+</div>
+
+<details class="card" id="guard-mcp"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Opcional: conectar herramientas con Guard MCP"]</summary>
+    <h2>Guard MCP</h2>
+    <p class="muted">@T["Put the Guard in front of the agent's MCP tools. Use the"] <code>dgk_</code> @T["key (never"] <code>dgm_</code>@T["). Do not also register the downstream MCP in Cursor."]</p>
+    <pre class="hash" id="guard-snippet">@Model.GuardSnippet</pre>
+    <p class="row"><button type="button" class="ghost" data-copy-target="#guard-snippet" data-copy>@T["Copy Cursor config"]</button></p>
+</details>
+
+@if (Model.CanWrite)
+{
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+        <form method="dialog" class="stack">
+            <h2 id="confirm-title">@T["Confirm"]</h2>
+            <p id="confirm-body" class="muted"></p>
+            <p class="row" style="margin:0">
+                <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+            </p>
+        </form>
+    </dialog>
+}

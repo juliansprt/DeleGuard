@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Deleguard.Api/Deleguard.Api.csproj" />
+    <Project Path="src/Deleguard.Application/Deleguard.Application.csproj" />
+    <Project Path="src/Deleguard.Domain/Deleguard.Domain.csproj" />
+    <Project Path="src/Deleguard.Desktop.Core/Deleguard.Desktop.Core.csproj" />
+    <Project Path="src/Deleguard.Desktop/Deleguard.Desktop.csproj" />
+    <Project Path="src/Deleguard.Infrastructure/Deleguard.Infrastructure.csproj" />
+    <Project Path="src/Deleguard.Policy/Deleguard.Policy.csproj" />
+    <Project Path="src/Deleguard.Workers/Deleguard.Workers.csproj" />
+  </Folder>
+  <Folder Name="/demo/">
+    <Project Path="demo/Deleguard.DemoAgent/Deleguard.DemoAgent.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Deleguard.IntegrationTests/Deleguard.IntegrationTests.csproj" />
+    <Project Path="tests/Deleguard.SecurityTests/Deleguard.SecurityTests.csproj" />
+    <Project Path="tests/Deleguard.UnitTests/Deleguard.UnitTests.csproj" />
+    <Project Path="tests/Deleguard.Desktop.Tests/Deleguard.Desktop.Tests.csproj" />
+    <Project Path="tests/Deleguard.DemoAgent.Tests/Deleguard.DemoAgent.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,48 @@
+[
+  {
+    "name": "known-project",
+    "expected": "REQUIRE_APPROVAL",
+    "request": {
+      "action": "mcp.call",
+      "resource_type": "mcp",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo"
+      }
+    }
+  },
+  {
+    "name": "unknown-project",
+    "expected": "DENY",
+    "request": {
+      "action": "mcp.call",
+      "resource_type": "mcp",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "different"
+      }
+    }
+  },
+  {
+    "name": "missing-project",
+    "expected": "DENY",
+    "request": {
+      "action": "mcp.call",
+      "resource_type": "mcp",
+      "resource_id": "operation-fixture",
+      "attributes": {}
+    }
+  },
+  {
+    "name": "wrong-action",
+    "expected": "DENY",
+    "request": {
+      "action": "unknown.execute",
+      "resource_type": "mcp",
+      "resource_id": "operation-fixture",
+      "attributes": {
+        "project_id": "ide-demo"
+      }
+    }
+  }
+]

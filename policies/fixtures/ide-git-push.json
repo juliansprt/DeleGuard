@@ -1,0 +1,1 @@
+[{"name":"push-is-explicitly-denied","expected":"DENY","expected_rule":"deny-git-push","request":{"action":"git.push","resource_type":"git","resource_id":"origin","attributes":{"project_id":"ide-demo"}}},{"name":"wrong-resource-has-no-applicable-policy","expected":"DENY","request":{"action":"git.push","resource_type":"network","resource_id":"origin","attributes":{}}}]

@@ -1,0 +1,109 @@
+---
+title: HTTP mínimo
+description: Headers, cuerpo snake_case, POST /v1/authorize y qué hacer con ALLOW, DENY y REQUIRE_APPROVAL.
+---
+
+Puedes usar **Agents, Actions y Policies directamente con `POST /v1/authorize`**, sin configurar AI Gateway, proveedores, modelos, presupuestos ni Guard MCP. Tu aplicación aplica la decisión antes de ejecutar y puede reportar el resultado con `POST /v1/executions`. AI Gateway es una integración opcional para llamadas a modelos; Guard MCP es opcional para herramientas MCP.
+
+import { Aside } from '@astrojs/starlight/components';
+
+Cualquier lenguaje que hable HTTP es suficiente. No hay SDK publicado todavía; usa estos endpoints.
+
+## Headers
+
+| Header | Obligatorio | Notas |
+| --- | --- | --- |
+| `Authorization: Bearer dgk_…` | Sí (agente) | Nunca el token `dgc_` de consola. |
+| `Idempotency-Key` | Sí en authorize | 8–128 caracteres. Misma clave = misma decisión. |
+| `Content-Type: application/json` | Sí | Cuerpo snake_case. |
+| `X-Deleguard-Agent-Id` | No | Conveniencia. |
+| `traceparent` | No | W3C / OpenTelemetry. |
+
+## `POST /v1/authorize`
+
+```http
+POST /v1/authorize HTTP/1.1
+Host: 127.0.0.1:5080
+Authorization: Bearer dgk_demo_invoice_agent_local_dev_only
+Idempotency-Key: 9f1c0a2b7e334c1a
+Content-Type: application/json
+```
+
+```json
+{
+  "agent": { "id": "invoice-agent", "environment": "production" },
+  "actor": { "id": "usr_481", "type": "human" },
+  "action": "invoice.cancel",
+  "resource": {
+    "type": "invoice",
+    "id": "FAC-DRAFT",
+    "attributes": {
+      "amount": 5000000,
+      "currency": "COP",
+      "status": "draft",
+      "reportedToTaxAuthority": false
+    }
+  },
+  "context": { "reason": "demo" }
+}
+```
+
+### Respuestas 200
+
+```json
+{ "decision": "ALLOW", "decision_id": "dec_…", "permit": "…" }
+```
+
+```json
+{ "decision": "DENY", "decision_id": "dec_…", "reason": "…" }
+```
+
+```json
+{ "decision": "REQUIRE_APPROVAL", "decision_id": "dec_…", "approval_id": "apr_…" }
+```
+
+<Aside type="caution">
+`DENY` es 200. 401 = `invalid_agent_credential` / `unauthorized`. 400 = `invalid_request` (p. ej. falta `Idempotency-Key`). 503 = `authorization_unavailable` → **no ejecutes**.
+</Aside>
+
+## Después de ALLOW
+
+```http
+POST /v1/executions
+Authorization: Bearer dgk_…
+Content-Type: application/json
+```
+
+```json
+{
+  "decision_id": "dec_…",
+  "status": "SUCCESS",
+  "provider_reference": "erp-cancel-8821"
+}
+```
+
+Respuesta **202**. `status`: `SUCCESS` | `FAILED` | `PARTIAL` | `UNKNOWN`.
+
+## Consultar una decisión
+
+```http
+GET /v1/decisions/{decision_id}
+Authorization: Bearer dgk_…
+```
+
+Útil cuando recibiste `REQUIRE_APPROVAL` y más tarde el humano aprobó: el GET refleja el estado actual.
+
+## Aprobar (humano / consola, no el agente)
+
+```http
+POST /v1/approvals/{approval_id}/approve
+Authorization: Bearer dgc_…
+```
+
+```json
+{ "note": "ok for this invoice", "expires_at": "2026-09-13T18:00:00Z" }
+```
+
+Deny: `POST /v1/approvals/{approval_id}/deny`.
+
+Especificación generada: [OpenAPI](/api/). Contrato de arranque: `deleguard_dev_pack/spec/openapi.yaml`. Runtime: `GET /openapi/v1.json`.

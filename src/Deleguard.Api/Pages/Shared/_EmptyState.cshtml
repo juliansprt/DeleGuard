@@ -1,0 +1,9 @@
+@model Deleguard.Api.Pages.EmptyStateModel
+<div class="empty-state">
+    <p class="empty-title">@T[Model.Title]</p>
+    <p class="muted">@T[Model.Body]</p>
+    @if (!string.IsNullOrWhiteSpace(Model.ActionHref) && !string.IsNullOrWhiteSpace(Model.ActionLabel))
+    {
+        <a class="button" href="@Model.ActionHref">@T[Model.ActionLabel]</a>
+    }
+</div>

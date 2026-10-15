@@ -1,0 +1,30 @@
+id: admin-role-assign
+version: 1
+priority: 80
+match:
+  action: admin.role.assign
+  resource_type: role
+rules:
+  - name: deny-foreign-agent
+    when:
+      field: agent.id
+      op: ne
+      value: admin-mcp
+    effect: DENY
+    reason: Administration actions are bound to the admin-mcp agent
+  - name: operator-needs-approval
+    when:
+      field: actor.roles
+      op: contains
+      value: operator
+    effect: REQUIRE_APPROVAL
+    reason: A second org-admin must confirm this administration change
+    approval:
+      expires_in: 30m
+      approver_roles: [org-admin]
+  - name: allow-entitled-roles
+    when:
+      any:
+        - { field: actor.roles, op: contains, value: org-admin }
+    effect: ALLOW
+fallback: DENY

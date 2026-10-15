@@ -1,0 +1,11 @@
+id: "ide-browser-navigate"
+version: 1
+priority: 100
+match:
+  action: "browser.navigate"
+  resource_type: "browser"
+rules:
+  - name: "deny-browser-navigation"
+    effect: "DENY"
+    reason: "IDE browser navigation requires an administrator-authored allow policy."
+fallback: "DENY"

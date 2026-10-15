@@ -1,0 +1,36 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+	--sl-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+	--sl-color-accent-low: #0A2D6B;
+	--sl-color-accent: #0B5CFF;
+	--sl-color-accent-high: #00E5E6;
+	--sl-color-text-accent: #7EB0FF;
+}
+
+:root[data-theme='light'] {
+	--sl-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+	--sl-color-accent-low: #E8F2FF;
+	--sl-color-accent: #0B5CFF;
+	--sl-color-accent-high: #051B3D;
+	--sl-color-text-accent: #0A2D6B;
+	--sl-color-bg: #F4F8FC;
+}
+
+.site-title {
+	font-weight: 700;
+	letter-spacing: -0.04em;
+}
+
+.console-shot {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	overflow: hidden;
+	box-shadow: 0 12px 40px rgb(5 27 61 / 12%);
+}
+
+.sl-markdown-content img {
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.75rem;
+	box-shadow: 0 12px 40px rgb(5 27 61 / 10%);
+}

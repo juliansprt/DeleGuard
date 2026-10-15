@@ -1,0 +1,115 @@
+[
+  {
+    "name": "private-sandbox-allow", "expected": "ALLOW", "expected_rule": "allow-sandbox-repository",
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "private-pilot-approval", "expected": "REQUIRE_APPROVAL", "expected_rule": "approve-pilot-repository",
+    "request": {
+      "environment": "pilot", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/pilot-issues",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "pilot", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "production-agent-deny", "expected": "DENY", "expected_rule": "deny-production",
+    "request": {
+      "environment": "production", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "production-repository-deny", "expected": "DENY", "expected_rule": "deny-production",
+    "request": {
+      "environment": "pilot", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/pilot-issues",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "production", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "unknown-repository-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "another-tenant/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "lookalike-repository-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox-copy",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "foreign-host-deny", "expected": "DENY", "expected_rule": "deny-untrusted-host",
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com.example.net", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "public-repository-deny", "expected": "DENY", "expected_rule": "deny-public-or-internal",
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "public", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "archived-pilot-deny", "expected": "DENY", "expected_rule": "deny-archived",
+    "request": {
+      "environment": "pilot", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/pilot-issues",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "pilot", "visibility": "private", "archived": true, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "disabled-issues-deny", "expected": "DENY", "expected_rule": "deny-disabled-issues",
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": false }
+    }
+  },
+  {
+    "name": "missing-classification-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "environment-mismatch-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/pilot-issues",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "pilot", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "unknown-environment-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "development", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "unknown-action-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.delete", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "wrong-resource-type-deny", "expected": "DENY", "expected_rule": null,
+    "request": {
+      "environment": "sandbox", "action": "github.issue.create", "resource_type": "github_issue", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true }
+    }
+  },
+  {
+    "name": "context-cannot-override-production-deny", "expected": "DENY", "expected_rule": "deny-production",
+    "request": {
+      "environment": "production", "action": "github.issue.create", "resource_type": "repository", "resource_id": "deleguard-pilot/sandbox",
+      "attributes": { "providerHost": "api.github.com", "repositoryEnvironment": "sandbox", "visibility": "private", "archived": false, "issuesEnabled": true },
+      "context": { "environment": "sandbox", "approved": true, "providerHost": "api.github.com" }
+    }
+  }
+]

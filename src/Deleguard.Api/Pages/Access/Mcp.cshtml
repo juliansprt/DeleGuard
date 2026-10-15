@@ -1,0 +1,127 @@
+@page "/access/mcp"
+@model Deleguard.Api.Pages.Access.McpModel
+@{
+    ViewData["Title"] = "Admin MCP";
+    ViewData["Nav"] = "mcp";
+}
+
+<partial name="_PageHeader" model='("Admin MCP", "Administración desde un cliente MCP. Habilita solo las herramientas que necesitas.")' />
+<partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+
+@if(Model.CanWrite){
+<section class="card" aria-label="@T["Set up this integration"]"><h2 class="section-title">@T["Set up this integration"]</h2><ol class="journey-steps compact-journey">
+    <li><span class="step-number">1</span><div><strong><a href="#mcp-tools">@T["Select tools"]</a></strong><small>@T["Enable only the administration tools this client needs."]</small></div></li>
+    <li><span class="step-number">2</span><div><strong><a href="#mcp-token">@T["Create a client token"]</a></strong><small>@T["Choose the user whose permissions will apply to this client."]</small></div></li>
+    <li><span class="step-number">3</span><div><strong><a href="#mcp-client">@T["Connect and test"]</a></strong><small>@T["Add the configuration to your client and request its available tools."]</small></div></li>
+</ol><a class="button ghost" href="@(!Model.Enabled || Model.EnabledTools.Count==0 ? "#mcp-tools" : Model.Credentials.Count==0 ? "#mcp-token" : "#mcp-client")">@T["Continue setup"] →</a></section>
+}
+@if (!string.IsNullOrEmpty(Model.RevealedToken))
+{
+    <div class="flash flash-secret" role="status">
+        <p style="margin:0 0 0.5rem"><strong>@T["Store this MCP token now."]</strong> @T["It will not be shown again."]</p>
+        <p class="secret" id="revealed-mcp">@Model.RevealedToken</p>
+        <p class="row" style="margin:0.75rem 0 0">
+            <button type="button" class="ghost" data-copy-target="#revealed-mcp" data-copy>@T["Copy token"]</button>
+            <span class="muted">@T["Prefix"] @Model.RevealedPrefix</span>
+        </p>
+    </div>
+}
+
+<div class="card">
+    <h2 id="mcp-client">@T["Conectar un cliente MCP"]</h2><p class="quiet-note">@T["Este módulo administra DeleGuard. Para proteger los archivos y operaciones de tu editor, abre"] <a href="/ide">IDE Control →</a></p>
+    @if (!Model.Enabled)
+    {
+        <p class="err">@T["Administration MCP is off for this organization. Cursor will get HTTP 401 until you enable it below."]</p>
+    }
+    <p class="muted">@T["MCP URL"] <code>@Model.McpUrl</code>@T[". Authenticate with"] <code>Authorization: Bearer dgm_…</code>@T[". Agent keys and console tokens are rejected. Setup guides: tools"] <code>docs_list</code> / <code>docs_get</code> @T["and prompt"] <code>configure-environment</code>.</p>
+    <pre class="hash" id="mcp-snippet">@Model.Snippet</pre>
+    <p class="row"><button type="button" class="ghost" data-copy-target="#mcp-snippet" data-copy>@T["Copy Cursor / Claude config"]</button></p>
+</div>
+
+@if (Model.CanWrite)
+{
+    <div class="card">
+        <h2 id="mcp-tools">@T["Enable and tools"]</h2>
+        <form method="post" asp-page-handler="Save" class="stack">
+            <label class="check-row">
+                <input asp-for="Enabled" />
+                <span>@T["Enable Administration MCP for this organization"]</span>
+            </label>
+            @foreach (var tool in Model.AvailableTools)
+            {
+                <label class="check-row">
+                    <input type="checkbox" name="SelectedTools" value="@tool" checked="@(Model.EnabledTools.Contains(tool))" />
+                    <code>@tool</code>
+                </label>
+            }
+            <p><button type="submit">@T["Save MCP settings"]</button></p>
+        </form>
+    </div>
+    <div class="card form-panel">
+        <h2 id="mcp-token">@T["Issue token"]</h2>
+        <form method="post" asp-page-handler="Issue" class="stack">
+            <p>
+                <label asp-for="IssueUserId">@T["Usuario"]</label>
+                <select asp-for="IssueUserId">
+                    @foreach (var user in Model.Users)
+                    {
+                        <option value="@user.Id">@user.Email</option>
+                    }
+                </select>
+            </p>
+            <button type="submit">@T["Issue dgm_ token"]</button>
+        </form>
+    </div>
+}
+else
+{
+    <div class="card">
+        <h2>@T["Status"]</h2>
+        <p>@T["Enabled:"] @(Model.Enabled ? T["yes"] : "no")</p>
+        <p class="muted">@T["Tools:"] @string.Join(", ", Model.EnabledTools)</p>
+    </div>
+}
+
+<div class="card">
+    <h2>@T["Tokens"]</h2>
+    @if (Model.Credentials.Count == 0)
+    {
+        <partial name="_EmptyState" model='new EmptyStateModel("No MCP tokens", "Issue a token for a user after enabling the server.")' />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>@T["User"]</th>
+                        <th>@T["Prefix"]</th>
+                        <th>@T["Created"]</th>
+                        <th>@T["Status"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Credentials)
+                {
+                    <tr>
+                        <td>@item.UserEmail</td>
+                        <td class="hash">@item.KeyPrefix</td>
+                        <td>@item.CreatedAt.UtcDateTime.ToString("u")</td>
+                        <td>@(item.RevokedAt is null ? T["Active"] : T["Revoked"])</td>
+                        <td>
+                            @if (item.RevokedAt is null && Model.CanWrite)
+                            {
+                                <form method="post" asp-page-handler="Revoke">
+                                    <input type="hidden" name="credentialId" value="@item.Id" />
+                                    <button type="submit" class="ghost">@T["Revoke"]</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

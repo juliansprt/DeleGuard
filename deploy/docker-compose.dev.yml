@@ -1,0 +1,7 @@
+# Use when Docker Desktop has little free disk. Example:
+# docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up postgres redis
+services:
+  postgres:
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql/data

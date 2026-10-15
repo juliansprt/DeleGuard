@@ -1,0 +1,80 @@
+---
+title: Policies
+description: List, create, test, and publish YAML policies. Authorize only reads the Published version.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Policies** (`/policies`) is the customer contract. The YAML is not Rego: it is Deleguard’s DSL. Authorize **ignores** drafts.
+
+## List
+
+![All policies table and Create policy form](/console/policies.png)
+
+- Green `vN` badge = Authorize uses that version.
+- **Draft** = nobody uses it yet.
+- **Open** opens the detail page.
+- **Save draft** creates id + action + resource type with fallback DENY and no rules, then opens the visual editor. It still does not decide.
+- **Paste YAML instead** is for pasting a contract from `policies/*.yaml`.
+
+## Visual editor
+
+![Visual editor with rules and simulator](/console/policy-detail.png)
+
+<Steps>
+
+1. **Visual** tab — id, version, priority, action, resource type, fallback DENY, rules and conditions. **Add rule** / **Add condition**. New rules are born as DENY.
+2. **Simulator** — agent, environment, resource id, expected effect, and attribute presets (`Draft low`, `High value`, `Tax reported`). **Test** evaluates the editor YAML **without** writing an audit decision. If nothing fires: *No rule matched → fallback DENY*.
+3. **Save as new version** — creates a draft in the Versions list on the right. It does not publish.
+4. **Load into editor** compares an older version. **Publish** asks for confirmation. From then on authorize uses that version.
+
+</Steps>
+
+**Fail-closed** and **Fallback DENY** badges remind the default: if nothing matches, DENY. YAML comments are lost when you edit visually. Nested `all`/`any` groups stay on the YAML tab.
+
+## YAML editor
+
+![YAML tab with the canonical contract](/console/policy-yaml.png)
+
+Use it to paste `policies/*.yaml` or to diff. Demo contract:
+
+```yaml
+id: invoice-cancel-production
+version: 4
+priority: 100
+match:
+  action: invoice.cancel
+  resource_type: invoice
+rules:
+  - name: never-cancel-tax-reported
+    when:
+      field: resource.attributes.reportedToTaxAuthority
+      op: eq
+      value: true
+    effect: DENY
+  - name: high-value-approval
+    when:
+      field: resource.attributes.amount
+      op: gt
+      value: 10000000
+    effect: REQUIRE_APPROVAL
+  - name: allow-draft-low-risk
+    when:
+      all:
+        - { field: resource.attributes.status, op: eq, value: draft }
+        - { field: resource.attributes.amount, op: lte, value: 10000000 }
+    effect: ALLOW
+fallback: DENY
+```
+
+<Aside type="caution">
+Publish is immediate. There is no “schedule”. Test first. Precedence: explicit DENY > REQUIRE_APPROVAL > ALLOW > fallback DENY.
+</Aside>
+
+Full reference: [Policy YAML](/en/reference/policy-yaml/).
+
+## Saved regression cases
+
+Choose an expected decision and save a named case in Simulator. **Compare saved cases** evaluates the editor candidate and published version without creating authorization decisions. Before publishing a product version, at least one case must exist and every case must pass against that exact version. Existing published versions remain active until a successful publication.
+
+The published YAML reference supports comparison. Unsaved edits are marked, and switching commented YAML to Visual asks before comments are discarded.

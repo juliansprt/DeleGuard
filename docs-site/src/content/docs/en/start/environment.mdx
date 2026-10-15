@@ -1,0 +1,126 @@
+---
+title: Configure the environment
+description: Prerequisites, Docker Compose, environment variables, demo seed, and production notes for Deleguard.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This guide covers the **local** host setup and **full Compose**. The policy engine is native YAML (`Deleguard.Policy`), not OPA.
+
+## Prerequisites
+
+- **.NET 10** SDK
+- Docker Desktop (Alpine images: Postgres 16 + Redis 7)
+- Optional: Python 3 for `examples/python/authorize_demo.py`
+
+## Topology
+
+```text
+HTTP clients / console
+  → ASP.NET API (stateless)
+      → PostgreSQL  (source of truth: decisions, permits, audit)
+      → Redis       (optional cache; not source of truth)
+      → Worker      (outbox + approval expiry)
+```
+
+| Surface | Host .NET | Compose |
+| --- | --- | --- |
+| API + console | `http://127.0.0.1:5080` | `http://localhost:8082` |
+| Health | `/health` | `/health` |
+| Login | `/login` | `/login` |
+| Docs | `http://localhost:4321` | `http://localhost:4321` |
+| Runtime OpenAPI | `/openapi/v1.json` | `/openapi/v1.json` |
+
+## Option A — stores in Docker, API on the host
+
+Use this when Docker cannot pull `mcr.microsoft.com/dotnet/sdk:10.0`.
+
+```powershell
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d postgres redis
+dotnet run --project src/Deleguard.Api --no-launch-profile --urls http://127.0.0.1:5080
+dotnet run --project src/Deleguard.Workers --no-launch-profile
+```
+
+`docker-compose.dev.yml` puts Postgres on **tmpfs**: data is gone when the container stops. Omit that overlay to persist.
+
+## Option B — full Compose stack
+
+When there is enough disk for the .NET 10 images:
+
+```powershell
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+One image serves API and worker. The process is selected with `DELEGUARD_ENTRYPOINT=api|worker`. The docs site is the `docs` service at `http://localhost:4321`.
+
+Docs only:
+
+```powershell
+docker compose -f deploy/docker-compose.yml up -d --build docs
+```
+
+## Variables and `appsettings`
+
+Nested ASP.NET keys use `__` in the environment.
+
+| Key | Purpose | Local value |
+| --- | --- | --- |
+| `ConnectionStrings__Postgres` | Database | `Host=localhost;Port=5432;Database=deleguard;Username=deleguard;Password=deleguard` |
+| `Redis__ConnectionString` | Optional cache | `localhost:6379` |
+| `Permits__SigningKey` | Permit HMAC | `deleguard-dev-permit-hmac-key-change-in-prod-32` |
+| `Permits__Issuer` | Permit issuer | `deleguard` |
+| `DemoAuth__ApiKeyPepper` | API key hashing | `deleguard-dev-pepper` |
+| `DemoAuth__ConsoleToken` | Console login | `dgc_demo_console_local_dev_only` |
+| `DemoAuth__DemoOrganizationId` | Demo tenant | `org_demo` |
+| `ASPNETCORE_ENVIRONMENT` | Hosting | `Development` on host; `Production` in Compose |
+| `ASPNETCORE_URLS` | Bind | Compose: `http://+:8080` |
+| `DELEGUARD_ENTRYPOINT` | Image process | `api` or `worker` |
+| `Docs__PublicUrl` | Public docs origin | `http://localhost:4321` |
+
+Files: `src/Deleguard.Api/appsettings.json` and `src/Deleguard.Workers/appsettings.json`. There is no `.env` in the repo: secrets come from the environment, never the image.
+
+## Seed data on API startup
+
+If org `org_demo` does not exist, `DemoSeeder` creates:
+
+| Entity | Id / value |
+| --- | --- |
+| Organization | `org_demo` (“Deleguard Demo”) |
+| Environment | `production` (`env_demo_production`) |
+| Agent | `invoice-agent` / `agt_invoice` |
+| API key | `dgk_demo_invoice_agent_local_dev_only` |
+| Action | `invoice.cancel` (HIGH risk) |
+| Policy | `invoice-cancel-production` v4, published |
+
+## Example clients
+
+```powershell
+$env:DELEGUARD_URL = "http://127.0.0.1:5080"   # or http://localhost:8082 in Compose
+$env:DELEGUARD_TOKEN = "dgk_demo_invoice_agent_local_dev_only"
+$env:DELEGUARD_CONSOLE = "dgc_demo_console_local_dev_only"
+python examples/python/authorize_demo.py
+```
+
+## Tests
+
+```powershell
+dotnet test tests/Deleguard.UnitTests
+dotnet test tests/Deleguard.IntegrationTests
+dotnet test tests/Deleguard.SecurityTests
+```
+
+Integration and security tests start PostgreSQL with Testcontainers.
+
+## Production (minimum)
+
+<Aside type="danger" title="Fail closed">
+If Postgres or the PDP is unavailable, the API returns **503** (`authorization_unavailable`) and **never** returns ALLOW. A down Redis must not change the decision.
+</Aside>
+
+- Stateless API replicas; secrets in the orchestrator/KMS, not the Dockerfile.
+- Production credentials must not authorize staging (and vice versa).
+- Rotate `Permits__SigningKey`, `DemoAuth__ApiKeyPepper`, and the console token. Demo login is replaced by SSO.
+- Postgres PITR; Redis is not source of truth.
+- The worker drains the outbox (approval expiry, audit export). Without it, approvals do not expire on their own.
+
+Next: [integrate into an existing solution](/en/integrate/existing-apps/).

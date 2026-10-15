@@ -1,0 +1,69 @@
+@page "/environments"
+@model Deleguard.Api.Pages.Environments.IndexModel
+@{
+    ViewData["Title"] = "Entornos";
+    ViewData["Nav"] = "environments";
+}
+
+<partial name="_PageHeader" model='("Entornos", "Separa desarrollo, pruebas y producción. Puedes empezar con el entorno que ya está creado.")' />
+
+@if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+@if (Model.CanWrite)
+{
+    <details class="card create-panel" id="add-environment" @(Model.IsError || Model.Environments.Count == 0 ? "open" : null)>
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Añadir entorno"]</summary>
+        <div class="create-panel-body">
+            <form method="post" asp-page-handler="Create" class="stack">
+                <p>
+                    <label for="Name">@T["Nombre del entorno"]</label>
+                    <input asp-for="Name" placeholder="development" autocomplete="off" required pattern="[a-z][a-z0-9_-]{1,63}" />
+                    <span class="hint">@T["Por ejemplo: development, staging o production. Este nombre se envía como"] <code>agent.environment</code>@T["; renombrarlo requiere actualizar los clientes."]</span>
+                </p>
+                <button type="submit">@T["Crear entorno"]</button>
+            </form>
+        </div>
+    </details>
+}
+
+<div class="card">
+    <h2>@T["Entornos disponibles"]</h2>
+    @if (Model.Environments.Count == 0)
+    {
+        @if (Model.CanWrite)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No environments yet", "Create production or staging so agents have an isolation boundary.", "#add-environment", "Create an environment")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No environments yet", "An operator or org-admin creates environments so agents stay isolated.")' />
+        }
+    }
+    else
+    {
+        <partial name="_EnvironmentTable" model="Model" />
+    }
+}
+
+@if (Model.CanWrite)
+{
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+        <form method="dialog" class="stack">
+            <h2 id="confirm-title">@T["Confirm"]</h2>
+            <p id="confirm-body" class="muted"></p>
+            <p class="row" style="margin:0">
+                <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+            </p>
+        </form>
+    </dialog>
+}

@@ -1,0 +1,13 @@
+@model Deleguard.Api.Pages.Agents.ConnectModel
+@{ var agent=Model.Agents.Single(a=>a.Id==Model.AgentId);var available=Model.Coverage.Where(c=>c.AgentEnabled&&c.ActionAssigned&&c.Policies.Count>0).ToList();var selected=available.FirstOrDefault(c=>c.Action==Model.ExampleAction)??available.FirstOrDefault(); }
+@if(selected is not null){
+<section class="card"><span class="eyebrow">@T["Your integration example"]</span><h2>@T["Start with your agent and action"]</h2>
+    <form method="get" action="/agents/connect" class="row"><input type="hidden" name="AgentId" value="@agent.Id" /><label for="example-action">@T["Action"]</label><select id="example-action" name="ExampleAction">@foreach(var action in available){<option value="@action.Action" selected="@(action.Action==selected.Action)">@action.Action</option>}</select><button class="ghost">@T["Update example"]</button></form>
+    <p>@T["Replace the resource ID and attributes with real values required by your policy. These examples request a decision; they do not execute an operation."]</p>
+    @foreach(var sample in AgentCodeExamples.Build($"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.PathBase}",agent.ExternalId,agent.EnvironmentName,selected.Action,selected.ResourceType)){
+        var id="code-"+sample.Language.Replace(".","dot");
+        <details class="advanced-options"><summary>@sample.Language</summary><div class="code-card"><div class="code-card-head"><strong>@sample.Language</strong><button type="button" class="ghost" data-copy data-copy-target="#@id">@T["Copy example"]</button></div><pre><code id="@id">@sample.Code</code></pre></div></details>
+    }
+    <p class="hint">@T["Keep the same idempotency key when retrying the same operation. Use a new key for a new operation. Never put an API key in browser code or source control."]</p>
+</section>
+}

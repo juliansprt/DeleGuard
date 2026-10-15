@@ -1,0 +1,97 @@
+@page "/audit"
+@model Deleguard.Api.Pages.Audit.IndexModel
+@{
+    ViewData["Title"] = "Audit";
+    ViewData["Nav"] = "audit";
+}
+
+<partial name="_PageHeader" model='("Audit", "Append-only ledger. Hashes chain each event to the previous one.")' />
+
+<div class="card">
+    <div class="filter-bar">
+        <nav class="scope-tabs" aria-label="@T["Audit event types"]">
+            <a class="tab @(Model.IsType(IndexModel.TypeAll) ? "active" : null)" href="@Model.TabHref(IndexModel.TypeAll)">@T["All"]</a>
+            <a class="tab @(Model.IsType(IndexModel.TypeDecisions) ? "active" : null)" href="@Model.TabHref(IndexModel.TypeDecisions)">@T["Decisions"]</a>
+            <a class="tab @(Model.IsType(IndexModel.TypeApprovals) ? "active" : null)" href="@Model.TabHref(IndexModel.TypeApprovals)">@T["Approvals"]</a>
+            <a class="tab @(Model.IsType(IndexModel.TypeExecutions) ? "active" : null)" href="@Model.TabHref(IndexModel.TypeExecutions)">@T["Executions"]</a>
+        </nav>
+        <form method="get" class="row filter-search" role="search">
+            @if (!Model.IsType(IndexModel.TypeAll))
+            {
+                <input type="hidden" name="type" value="@IndexModel.NormalizeType(Model.Type)" />
+            }
+            <label class="sr-only" for="audit-search">@T["Search audit"]</label>
+            <input id="audit-search" name="q" value="@Model.Q" placeholder="@T["Search action, resource, or dec_…"]" autocomplete="off" />
+            <button type="submit" class="ghost">@T["Search"]</button>
+        </form>
+    </div>
+    @if (Model.Events.Count == 0)
+    {
+        @if (!string.IsNullOrWhiteSpace(Model.Q) || !Model.IsType(IndexModel.TypeAll))
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No matching events", "Clear the search or pick another type.")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No events yet", "Authorize, approve, or report execution to start the chain.", "/playground", "Open Playground")' />
+        }
+    }
+    else
+    {
+        <p class="muted" style="margin:0 0 0.65rem">@Model.Events.Count @T["event"]@(Model.Events.Count == 1 ? "" : "s")</p>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th class="nowrap">@T["Time"]</th>
+                        <th>@T["Event"]</th>
+                        <th>@T["Outcome"]</th>
+                        <th>@T["Summary"]</th>
+                        <th>@T["Decision"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.Events)
+                {
+                    var outcome = ConsoleFormatting.EventOutcome(item);
+                    var detail = ConsoleFormatting.EventDetail(item);
+                    <tr>
+                        <td class="muted nowrap" title="@item.CreatedAt.UtcDateTime.ToString("u")">@item.CreatedAt.UtcDateTime.ToString("MM-dd HH:mm:ss")</td>
+                        <td>@T[ConsoleFormatting.EventLabel(item.EventType)]</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(outcome))
+                            {
+                                <span class="badge @ConsoleFormatting.DecisionBadge(outcome)">@outcome</span>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(detail) ? "—" : detail)</td>
+                        <td>
+                            @if (string.IsNullOrWhiteSpace(item.DecisionId))
+                            {
+                                <span class="muted">—</span>
+                            }
+                            else
+                            {
+                                <code class="hash-clip" title="@item.DecisionId">@ConsoleFormatting.ShortId(item.DecisionId)</code>
+                            }
+                        </td>
+                        <td>
+                            <details class="tech audit-payload">
+                                <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Payload"]</summary>
+                                <p class="muted">@T["prev"] @item.PreviousEventHash</p>
+                                <p class="muted">hash @item.EventHash</p>
+                                <pre class="hash">@ConsoleFormatting.PrettyJson(item.PayloadJson)</pre>
+                            </details>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

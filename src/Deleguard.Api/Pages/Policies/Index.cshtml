@@ -1,0 +1,206 @@
+@page "/policies"
+@model Deleguard.Api.Pages.Policies.IndexModel
+@{
+    ViewData["Title"] = "Políticas";
+    ViewData["Nav"] = "policies";
+}
+
+<partial name="_PageHeader" model='("Políticas", "Configura cuándo permitir, bloquear o pedir aprobación. Prueba tus cambios antes de publicarlos.")' />
+
+@if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+{
+    <div class="flash flash-ok" role="status">
+        @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+    </div>
+}
+else
+{
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+}
+
+@if (Model.CanWrite && !Model.IsAdminScope)
+{
+    var createOpen = Model.IsError || Model.PasteOpen || !string.IsNullOrEmpty(Model.PrefillAction) || Model.ProtectedCount == 0;
+    <details class="card create-panel" id="create-policy" @(createOpen ? "open" : null)>
+        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Create policy"]</summary>
+        <div class="create-panel-body">
+            @if (!string.IsNullOrEmpty(Model.PrefillAction))
+            {
+                <p class="muted">@T["Draft matching"] <code>@Model.PrefillAction</code>@T[". Authorize ignores it until you publish."]</p>
+            }
+            else
+            {
+                <p class="muted">@T["Creates an unpublished draft with fallback DENY and no rules."]</p>
+            }
+            <form method="post" asp-page-handler="Create" class="stack">
+                <p>
+                    <label for="Slug">@T["Id"]</label>
+                    <input asp-for="Slug" id="Slug" autocomplete="off" spellcheck="false" data-policy-slug />
+                    <span class="hint">@T["Lowercase slug. This is the YAML"] <code>id</code>.</span>
+                </p>
+                <p>
+                    <label for="ActionName">@T["Action"]</label>
+                    <input asp-for="ActionName" id="ActionName" list="create-action-list" autocomplete="off" spellcheck="false" data-policy-action />
+                    <span class="hint">@T["Must match the action agents send to authorize."]</span>
+                </p>
+                <p>
+                    <label for="ResourceType">@T["Resource type"]</label>
+                    <input asp-for="ResourceType" id="ResourceType" autocomplete="off" spellcheck="false" data-policy-resource />
+                    <span class="hint">@T["Must match the action catalog and"] <code>match.resource_type</code>.</span>
+                </p>
+                <p>
+                    <label>@T["Fallback"]</label>
+                    <input value="DENY" readonly />
+                    <span class="hint">@T["Fail-closed. If no rule matches, authorize DENYs."]</span>
+                </p>
+                <fieldset>
+                    <legend>@T["Agents"]</legend>
+                    <p class="hint">@T["Must be a subset of the action's agents."]</p>
+                    @foreach (var agent in Model.AssignableAgents)
+                    {
+                        <label class="row" style="gap:0.4rem">
+                            <input type="checkbox" name="SelectedAgentIds" value="@agent.Id" checked="@(Model.SelectedAgentIds.Contains(agent.Id))" />
+                            <span>@agent.DisplayName <code>@agent.ExternalId</code></span>
+                        </label>
+                    }
+                </fieldset>
+                <button type="submit">@T["Save draft"]</button>
+            </form>
+            <details class="tech" @(Model.PasteOpen ? "open" : null)>
+                <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Paste YAML instead"]</summary>
+                <form method="post" asp-page-handler="Paste" class="stack" style="margin-top:0.85rem">
+                    <p>
+                        <label for="Yaml">YAML</label>
+                        <textarea asp-for="Yaml" id="Yaml" class="short" spellcheck="false"></textarea>
+                        <span class="hint">@T["Use this to paste a contract from"] <code>policies/*.yaml</code>.</span>
+                    </p>
+                    <button type="submit" class="ghost">@T["Save draft from YAML"]</button>
+                </form>
+            </details>
+        </div>
+    </details>
+    <datalist id="create-action-list">
+        @foreach (var action in Model.Actions)
+        {
+            <option value="@action.Name"></option>
+        }
+    </datalist>
+    <script type="application/json" id="policy-action-catalog">@Html.Raw(Model.ActionCatalogJson)</script>
+    <script type="application/json" id="policy-action-agents">@Html.Raw(Model.ActionAgentsJson)</script>
+}
+
+<div class="card">
+    <div class="card-head">
+        <h2>@(Model.IsAdminScope ? T["Administration policies"] : T["Protected policies"])</h2>
+    </div>
+    <div class="filter-bar">
+        <nav class="scope-tabs" aria-label="@T["Policy catalog"]">
+            <a class="tab @(Model.IsAdminScope ? null : "active")"
+               href="/policies?scope=protected@(string.IsNullOrWhiteSpace(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q))">@T["Protected"] <span class="muted">@Model.ProtectedCount</span></a>
+            <a class="tab @(Model.IsAdminScope ? "active" : null)"
+               href="/policies?scope=admin@(string.IsNullOrWhiteSpace(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q))">@T["Administration"] <span class="muted">@Model.AdministrationCount</span></a>
+        </nav>
+        <form method="get" class="row filter-search" role="search">
+            <input type="hidden" name="scope" value="@Model.Scope" />
+            <label class="sr-only" for="policy-search">@T["Search policies"]</label>
+            <input id="policy-search" name="q" value="@Model.Q" placeholder="@T["Search slug, action, or resource"]" autocomplete="off" />
+            <button type="submit" class="ghost">@T["Search"]</button>
+        </form>
+    </div>
+    @if (Model.IsAdminScope)
+    {
+        <p class="hint">@T["Catalog policies bound to"] <code>admin-mcp</code>@T[". They cannot be deleted."]</p>
+    }
+    else
+    {
+        <p class="hint">@T["Authorize only reads a published version. Drafts never decide."]</p>
+    }
+    @if (Model.Policies.Count == 0)
+    {
+        @if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No matching policies", "Clear the search or try another slug or action.")' />
+        }
+        else if (Model.IsAdminScope)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No administration policies", "Administration catalog policies appear here after seed.")' />
+        }
+        else if (Model.CanWrite)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("Create your first policy", "Save a draft, add rules, test a fixture, then publish. Drafts are never used at decision time.", "#create-policy", "Create a policy")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No policies yet", "An operator or org-admin creates a draft, tests it, then publishes. Authorize ignores drafts.")' />
+        }
+    }
+    else
+    {
+        <partial name="_PolicyTable" model="Model" />
+    }
+</div>
+
+@if (Model.CanWrite)
+{
+    <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+        <form method="dialog" class="stack">
+            <h2 id="confirm-title">@T["Confirm"]</h2>
+            <p id="confirm-body" class="muted"></p>
+            <p class="row" style="margin:0">
+                <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+            </p>
+        </form>
+    </dialog>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var slug = document.querySelector("[data-policy-slug]");
+            var action = document.querySelector("[data-policy-action]");
+            var resource = document.querySelector("[data-policy-resource]");
+            var catalogNode = document.getElementById("policy-action-catalog");
+            var agentsNode = document.getElementById("policy-action-agents");
+            if (!slug || !action) {
+                return;
+            }
+            var catalog = {};
+            var agentsByAction = {};
+            try {
+                catalog = JSON.parse(catalogNode && catalogNode.textContent ? catalogNode.textContent : "{}");
+            } catch (e) {
+                catalog = {};
+            }
+            try {
+                agentsByAction = JSON.parse(agentsNode && agentsNode.textContent ? agentsNode.textContent : "{}");
+            } catch (e) {
+                agentsByAction = {};
+            }
+            function slugFromAction(value) {
+                return String(value || "").replace(/[._:]/g, "-");
+            }
+            function syncAgents(actionName) {
+                var ids = agentsByAction[actionName] || [];
+                document.querySelectorAll("input[name='SelectedAgentIds']").forEach(function (box) {
+                    box.checked = ids.indexOf(box.value) >= 0;
+                });
+            }
+            var autoSlug = slug.value === slugFromAction(action.value);
+            action.addEventListener("input", function () {
+                if (autoSlug || slug.value === "") {
+                    slug.value = slugFromAction(action.value);
+                    autoSlug = true;
+                }
+                var mapped = catalog[action.value];
+                if (mapped && resource && (resource.value === "" || resource.value === "resource" || resource.value === "invoice" || Object.values(catalog).indexOf(resource.value) >= 0)) {
+                    resource.value = mapped;
+                }
+                syncAgents(action.value);
+            });
+            slug.addEventListener("input", function () {
+                autoSlug = slug.value === slugFromAction(action.value);
+            });
+        })();
+    </script>
+}

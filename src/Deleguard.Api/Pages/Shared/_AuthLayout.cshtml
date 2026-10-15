@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="@T.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@T[ViewData["Title"]?.ToString()] · Deleguard</title>
+    <partial name="_HeadAssets" />
+</head>
+<body><div class="auth-language"><partial name="_LanguageSelector" /></div>
+    <main class="auth-shell">
+        @RenderBody()
+    </main>
+</body>
+</html>

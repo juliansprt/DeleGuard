@@ -1,0 +1,55 @@
+---
+title: Deleguard
+description: Deterministic authorization, human approval, and execution evidence for AI-agent actions.
+template: splash
+hero:
+  tagline: Sit in front of every sensitive agent action. The model never decides.
+  actions:
+    - text: Get started in 5 minutes
+      link: /en/start/quickstart/
+      icon: rocket
+    - text: Integrate with an LLM
+      link: /en/integrate/with-llm/
+      icon: puzzle
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+```text
+agent → POST /v1/authorize → ALLOW | DENY | REQUIRE_APPROVAL
+                           → approval → permit → evidence → audit
+```
+
+<CardGrid stagger>
+	<Card title="Configure the environment" icon="setting">
+		.NET 10, Postgres, Redis, and demo keys to run the API and console locally.
+		<br />
+		<a href="/en/start/environment/">Environment guide →</a>
+	</Card>
+	<Card title="Integrate the agent" icon="forward-slash">
+		If you use an LLM: the model requests the tool, **your code** calls authorize, then you execute.
+		<br />
+		<a href="/en/integrate/with-llm/">OpenAI / Claude guide →</a>
+	</Card>
+	<Card title="Use the console" icon="laptop">
+		Login, Approvals, Playground, Agents, Actions, Policies, and Audit — with real screenshots.
+		<br />
+		<a href="/en/console/login/">Console handbook →</a>
+	</Card>
+	<Card title="HTTP contract" icon="document">
+		OpenAPI, decisions, policy YAML, and admin APIs.
+		<br />
+		<a href="/en/reference/decisions/">Reference →</a>
+	</Card>
+</CardGrid>
+
+## Three decisions, one contract
+
+| Decision | What the agent does |
+| --- | --- |
+| `ALLOW` | Execute the action. Keep `decision_id` and the `permit`. |
+| `DENY` | Do not execute. HTTP **200** with `decision=DENY` — not a network error. |
+| `REQUIRE_APPROVAL` | Wait. A human approves in the console, then a permit appears. |
+
+The `invoice.cancel` demo covers all three: cheap draft → ALLOW; high-value issued → REQUIRE_APPROVAL; tax-reported → DENY.

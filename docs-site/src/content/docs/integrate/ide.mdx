@@ -1,0 +1,42 @@
+---
+title: Controlar agentes del IDE
+description: Políticas, aprobaciones y evidencia para herramientas integradas, sin AI Gateway.
+---
+
+DeleGuard puede autorizar herramientas de Cursor, VS Code/Copilot y Claude Code mediante un componente local y hooks. **AI Gateway es opcional y no participa en este recorrido.**
+
+![Registro de proyectos IDE en la consola DeleGuard](/console/ide-control.png)
+
+## Preparación
+
+Para una primera instalación, abre la guía de cuatro pasos en **IDE control**. Puedes descargar el instalador desde la consola, seleccionar tu proyecto, IDE y sistema operativo y copiar un comando con el agente y entorno correctos. No necesitas tener el repositorio fuente de DeleGuard.
+
+La ruta completa del paso de instalación es la carpeta de trabajo que abres en el IDE. Las rutas protegidas del registro, en cambio, son relativas a esa carpeta: `infra/production`. El diagnóstico comprueba la conexión; la prueba de lectura con aprobación comprueba el recorrido real.
+
+1. Registra aplicación y agente en la consola.
+2. Abre **Agents → IDE control** (`/ide`) y registra el proyecto, su agente y los directorios protegidos o prohibidos.
+3. Prepara las acciones y borradores de políticas desde la ficha del proyecto. Revisa sus casos y publica en el editor existente.
+4. Instala el adaptador desde `integrations/ide`, siguiendo su `README.md`. Requiere Python 3.11 y almacena la credencial del agente fuera del repositorio, mediante protección del sistema operativo.
+5. Prueba la versión concreta del IDE antes de considerar su cobertura operativa.
+
+Las plantillas permiten `src`, requieren aprobación para `infra/production` y deniegan otras rutas. Son un punto de partida que debes adaptar al proyecto. Lectura, listado, búsqueda, creación, escritura, borrado y movimiento son acciones independientes.
+
+## Una lectura protegida
+
+Al intentar leer `infra/production/config.yaml`, el hook consulta `/v1/authorize`. Si necesita aprobación, bloquea ese intento y muestra un enlace a **Approvals**. El usuario revisa la acción y aprueba o rechaza. Después se reintenta la misma operación: el componente comprueba su identidad y estado, consume el permiso y permite una sola llamada. El evento posterior reporta el resultado.
+
+Una operación pendiente, rechazada o vencida no se libera. Cambiar ruta, destino, herramienta o argumentos exige otra autorización. Si un fallo deja incierto el resultado, no se repite automáticamente.
+
+## Acceso temporal
+
+En IDE control puedes conceder acceso a un agente, proyecto, directorio y acciones concretas. La duración inicial es 15 minutos y se puede revocar. Cada operación consulta de nuevo al servidor. No incluye borrado, comandos ni MCP.
+
+La concesión solo satisface la protección añadida por la configuración del proyecto cuando la política publicada permite la acción. Nunca supera una denegación ni una aprobación exigida explícitamente por YAML.
+
+## Privacidad y cobertura
+
+Por defecto se envían metadatos y hashes. Compartir un diff es opcional por proyecto; solo está disponible cuando la herramienta aporta un diff explícito. No se suben automáticamente prompts, archivos completos ni salidas de terminal.
+
+Los hooks **no aíslan el equipo**. Indexación, extensiones y procesos fuera de ellos no quedan controlados. Aprobar un comando tampoco demuestra qué archivos tocará. Las capacidades de sesión son reportadas por el adaptador y no constituyen atestación. Las versiones sin validación real figuran como `unverified`.
+
+Se incluyen pruebas automatizadas y una matriz de CI para los tres sistemas operativos. La prueba interactiva de cada combinación de IDE y sistema sigue siendo necesaria; consulta el checklist del README de la integración.

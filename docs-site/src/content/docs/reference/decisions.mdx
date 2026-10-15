@@ -1,0 +1,35 @@
+---
+title: Decisiones
+description: Semántica de ALLOW, DENY y REQUIRE_APPROVAL, precedencia y default deny.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Toda llamada a `POST /v1/authorize` que se evalúa con éxito responde **HTTP 200** y un campo `decision`.
+
+## ALLOW
+
+Una regla explícita autoriza. La respuesta incluye `decision_id` y un `permit` firmado de corta vida. El agente **puede** ejecutar y después reportar evidencia.
+
+## DENY
+
+Una regla DENY ganó, no hay política aplicable, falta un atributo requerido, o el fallback disparó. El agente **no** ejecuta. HTTP sigue siendo 200.
+
+## REQUIRE_APPROVAL
+
+La acción es plausible pero necesita un humano. La respuesta trae `approval_id`. Hasta **Approve once**, no hay permit. Tras aprobar, `GET /v1/decisions/{id}` refleja el ALLOW/permit.
+
+## Precedencia
+
+Dentro de las reglas que matchean (y entre políticas aplicables, mayor `priority` / `version`):
+
+1. DENY explícito
+2. REQUIRE_APPROVAL
+3. ALLOW
+4. Fallback DENY (default)
+
+No hay política, acción desconocida o campo ausente en un `when` → la condición falla → si nada más matchea, DENY.
+
+<Aside type="tip">
+En la demo, `reportedToTaxAuthority: true` gana siempre (DENY) aunque el importe también pida aprobación.
+</Aside>

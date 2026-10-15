@@ -1,0 +1,51 @@
+@model Deleguard.Api.Pages.Actions.IndexModel
+<div class="card">
+    <div class="card-head">
+        <h2>@(Model.IsAdminScope ? T["Administration actions"] : T["Protected actions"])</h2>
+    </div>
+    <div class="filter-bar">
+        <nav class="scope-tabs" aria-label="@T["Action catalog"]">
+            <a class="tab @(Model.IsAdminScope ? null : "active")"
+               href="/actions?scope=protected@(string.IsNullOrWhiteSpace(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q))">@T["Protected"] <span class="muted">@Model.ProtectedCount</span></a>
+            <a class="tab @(Model.IsAdminScope ? "active" : null)"
+               href="/actions?scope=admin@(string.IsNullOrWhiteSpace(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q))">@T["Administration"] <span class="muted">@Model.AdministrationCount</span></a>
+        </nav>
+        <form method="get" class="row filter-search" role="search">
+            <input type="hidden" name="scope" value="@Model.Scope" />
+            <label class="sr-only" for="action-search">@T["Search actions"]</label>
+            <input id="action-search" name="q" value="@Model.Q" placeholder="@T["Search name or resource"]" autocomplete="off" />
+            <button type="submit" class="ghost">@T["Search"]</button>
+        </form>
+    </div>
+    @if (Model.IsAdminScope)
+    {
+        <p class="hint">@T["Bound to the"] <code>admin-mcp</code> @T["agent. Product agents cannot call these names."]</p>
+    }
+    else
+    {
+        <p class="hint">@T["Names are immutable and must match"] <code>action</code> @T["in authorize character for character. Risk does not authorize."]</p>
+    }
+    @if (Model.Actions.Count == 0)
+    {
+        if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No matching actions", "Clear the search or try another name.")' />
+        }
+        else if (Model.IsAdminScope)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No administration actions", "Administration MCP actions appear here after seed.")' />
+        }
+        else if (Model.CanWrite)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No protected actions yet", "Declare invoice.cancel or any other operation an agent may attempt. Registering the name does not ALLOW it.", "#add-action", "Add an action")' />
+        }
+        else
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No protected actions yet", "An operator or org-admin registers the names an agent may attempt.")' />
+        }
+    }
+    else
+    {
+        <partial name="_ActionTable" model="Model" />
+    }
+</div>

@@ -1,0 +1,159 @@
+@page "/webhooks/{id}"
+@model Deleguard.Api.Pages.Webhooks.DetailModel
+@{
+    ViewData["Title"] = Model.Endpoint?.Description ?? "Webhook";
+    ViewData["Nav"] = "webhooks";
+}
+
+@if (Model.Endpoint is null)
+{
+    <partial name="_PageHeader" model='("Webhook", "This endpoint is not in the current tenant.")' />
+    <div class="card">
+        <partial name="_EmptyState" model='new EmptyStateModel("Not found", "It may have been removed or the id is wrong.", "/webhooks", "Back to webhooks")' />
+    </div>
+}
+else
+{
+    <header class="page-header">
+        <div>
+            <h1>@Model.Endpoint.Description</h1>
+            <p class="lede">@T["Standard Webhooks HMAC. Receivers should treat"] <code>webhook-id</code> @T["as an idempotency key; retries reuse the same id."]</p>
+        </div>
+        <div class="page-actions">
+            <span class="badge @WebhookConsole.StatusBadge(Model.Endpoint.Status)">@Model.Endpoint.Status</span>
+            <a class="button ghost" href="/webhooks">@T["All webhooks"]</a>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.RevealedSecret))
+    {
+        <div class="flash flash-secret" role="status">
+            <p style="margin:0 0 0.5rem"><strong>@T["Store this signing secret now."]</strong> @T["It will not be shown again."]</p>
+            <p class="secret" id="revealed-secret">@Model.RevealedSecret</p>
+            <p class="row" style="margin:0.75rem 0 0">
+                <button type="button" class="ghost" data-copy-target="#revealed-secret" data-copy>@T["Copy"]</button>
+                <span class="muted">@T["Prefix"] @Model.RevealedPrefix</span>
+            </p>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+    {
+        <div class="flash flash-ok" role="status">
+            @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+        </div>
+    }
+    else
+    {
+        <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+    }
+
+    <div class="card">
+        <dl class="facts large">
+            <dt>URL</dt>
+            <dd class="hash">@Model.Endpoint.Url</dd>
+            <dt>@T["Events"]</dt>
+            <dd>@(Model.Endpoint.EventTypes.Count == 0 ? T["All events"] : string.Join(", ", Model.Endpoint.EventTypes))</dd>
+            <dt>@T["Secret"]</dt>
+            <dd><code>@Model.Endpoint.SecretPrefix</code></dd>
+            <dt>@T["Failures"]</dt>
+            <dd>@Model.Endpoint.ConsecutiveFailures @T["consecutive"]</dd>
+        </dl>
+        @if (Model.CanWrite)
+        {
+        <div class="row" style="margin-top:1.25rem">
+            <form method="post" asp-page-handler="Ping">
+                <button type="submit">@T["Send ping"]</button>
+            </form>
+            @if (Model.Endpoint.Status == "disabled")
+            {
+                <form method="post" asp-page-handler="Enable">
+                    <button type="submit" class="ghost">@T["Enable"]</button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Disable">
+                    <button type="submit" class="secondary" onclick="return confirm('Disable this endpoint? Pending retries stop until you enable it again.');">@T["Disable"]</button>
+                </form>
+            }
+            <form method="post" asp-page-handler="Rotate">
+                <button type="submit" class="ghost" onclick="return confirm('Rotate the signing secret? The previous secret stays valid until the next rotation.');">@T["Rotate secret"]</button>
+            </form>
+        </div>
+        }
+    </div>
+
+    <div class="card">
+        <h2>@T["Recover failed deliveries"]</h2>
+        @if (Model.CanWrite)
+        {
+        <form method="post" asp-page-handler="Recover" class="row">
+            <label asp-for="RecoverSince">Since (ISO-8601 / UTC offset)</label>
+            <input type="text" asp-for="RecoverSince" asp-format="{0:O}" required />
+            <label asp-for="RecoverUntil">Until (fixed cutoff)</label>
+            <input type="text" asp-for="RecoverUntil" asp-format="{0:O}" required />
+            <button type="submit" class="ghost">@T["Requeue failed since"]</button>
+        </form>
+        }
+        else
+        {
+            <p class="muted">@T["webhooks.write is required to requeue failed deliveries."]</p>
+        }
+    </div>
+
+    <div class="card">
+        <h2>@T["Delivery attempts"]</h2>
+        @if (Model.Attempts.Count == 0)
+        {
+            <partial name="_EmptyState" model='new EmptyStateModel("No attempts yet", "Ping the endpoint or wait for the next authorization event.")' />
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th>@T["When"]</th>
+                            <th>@T["Event"]</th>
+                            <th>@T["Attempt"]</th>
+                            <th>@T["Status"]</th>
+                            <th>Error</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var attempt in Model.Attempts)
+                    {
+                        <tr>
+                            <td class="muted">@attempt.FinishedAt.UtcDateTime.ToString("u")</td>
+                            <td><code>@attempt.EventType</code></td>
+                            <td>@attempt.AttemptNumber</td>
+                            <td>
+                                @if (attempt.Success)
+                                {
+                                    <span class="badge allow">@attempt.HttpStatus</span>
+                                }
+                                else
+                                {
+                                    <span class="badge deny">@(attempt.HttpStatus?.ToString() ?? "err")</span>
+                                }
+                            </td>
+                            <td class="hash">@(attempt.Error ?? attempt.ResponseBody ?? "—")</td>
+                            <td>
+                                @if (Model.CanWrite)
+                                {
+                                <form method="post" asp-page-handler="Resend">
+                                    <input type="hidden" name="messageId" value="@attempt.MessageId" />
+                                    <button type="submit" class="ghost">@T["Resend"]</button>
+                                </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}

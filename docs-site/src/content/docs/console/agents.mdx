@@ -1,0 +1,51 @@
+---
+title: Agents
+description: Registrar identidades no humanas, copiar la API key de un solo uso, rotar o deshabilitar credenciales.
+---
+
+Puedes usar **Agents, Actions y Policies directamente con `POST /v1/authorize`**, sin configurar AI Gateway, proveedores, modelos, presupuestos ni Guard MCP. Tu aplicación aplica la decisión antes de ejecutar y puede reportar el resultado con `POST /v1/executions`. AI Gateway es una integración opcional para llamadas a modelos; Guard MCP es opcional para herramientas MCP.
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Agents** (`/agents`) está en **Configure**. Cada authorize se atribuye a un agente. El seed crea `invoice-agent` en el entorno `production`.
+
+![Tabla Registered agents con invoice-agent y formulario Add agent](/console/agents.png)
+
+Quien tenga `agents.read` ve el directorio. Crear, rotar, deshabilitar y habilitar exigen `agents.write`.
+
+## Crear
+
+<Steps>
+
+1. **External id** — slug en minúsculas (`invoice-agent`). Es el `agent.id` del JSON de authorize y lo que ves en Audit. La tabla también muestra el id interno `agt_…`.
+2. **Display name** — etiqueta humana.
+3. **Environment** — aislamiento: una key de `production` no debe valer en staging. Crea entornos extra en [Environments](/console/environments/).
+4. **Create agent**.
+
+</Steps>
+
+La key identifica el **workload**. La identidad del actor viene de tu aplicación, no de este formulario.
+
+## La key se muestra una vez
+
+Tras crear o **Rotate key**, un banner **Store this API key now** revela el secreto `dgk_…`. Cópialo para el workload. [Playground](/console/playground/) no necesita esa key: vincula el agente seleccionado a la petición.
+
+**Rotate key** pide confirmación. La key anterior **deja de funcionar al instante**. Actualiza el secreto del agente. Playground sigue funcionando porque no usa la key de producción.
+
+Si la rotación necesita un segundo aprobador, la página enlaza a la aprobación pendiente en lugar de revelar una key.
+
+<Aside type="danger">
+No pegues esta key en chats, tickets ni logs. Los tokens de consola (`dgc_`) y los del MCP de Administración (`dgm_`) no pueden llamar a `/v1/authorize`.
+</Aside>
+
+## Disable
+
+**Disable** es respuesta a incidente: los authorize de ese agente fallan cerrados hasta **Enable**. Los hashes de la key se conservan; no es una rotación. El agente del MCP de Administración (`admin-mcp`) no se puede deshabilitar.
+
+Para poner este agente delante de tools MCP, corre el [Guard MCP](/integrate/mcp-guard/) con su clave `dgk_`. No uses un token `dgm_` del MCP de administración.
+
+## Ficha conectada del agente
+
+Selecciona el nombre del agente para ver entorno, última decisión, acciones y políticas asignadas y gasto liquidado del Gateway. **Connect my agent** guía registro, asignación y prueba.
+
+![Ficha de agente](/console/agent-detail.png)

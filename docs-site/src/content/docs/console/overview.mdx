@@ -1,0 +1,33 @@
+---
+title: Overview
+description: Atención operativa, cobertura y progreso de integración por aplicación.
+---
+
+Puedes usar **Agents, Actions y Policies directamente con `POST /v1/authorize`**, sin configurar AI Gateway, proveedores, modelos, presupuestos ni Guard MCP. Tu aplicación aplica la decisión antes de ejecutar y puede reportar el resultado con `POST /v1/executions`. AI Gateway es una integración opcional para llamadas a modelos; Guard MCP es opcional para herramientas MCP.
+
+**Overview** reúne el estado de la aplicación seleccionada. La navegación principal conecta Agents, Actions, Policies, AI Gateway, Approvals y Activity. La administración está agrupada en Settings.
+
+![Resumen operativo de Deleguard](/console/overview.png)
+
+## Indicadores
+
+Las tarjetas abren el listado correspondiente: aprobaciones pendientes, asignaciones incompletas, decisiones permitidas sin evidencia, ejecuciones reportadas como fallidas hoy, gasto liquidado del mes y denegaciones de presupuesto. Los periodos son UTC. El gasto del resumen corresponde a la aplicación; el presupuesto del Gateway corresponde a la organización.
+
+Los contadores diarios se calculan sobre todo el periodo, no sobre una muestra de eventos recientes. Una denegación cuenta la decisión inicial, aunque posteriormente cambie el estado de una aprobación.
+
+## Conectar un agente
+
+Abre **Connect my agent**. Selecciona la aplicación, crea o elige un agente y su entorno, asigna una política publicada junto con su acción y abre la prueba. Las asignaciones existentes de otros agentes se conservan.
+
+El progreso distingue configuración lista, autorización probada y ejecución reportada. Una prueba en Playground no acredita una conexión de producción. La evidencia es reportada por la integración; no verifica por sí sola la operación externa.
+
+## Recorrido de demostración
+
+1. Abre la ficha de un agente y revisa su cobertura.
+2. En Playground, prueba los escenarios permitidos, denegados y sujetos a aprobación de `invoice.cancel`.
+3. Resuelve la aprobación desde Approvals y continúa el flujo de prueba.
+4. Abre **Open decision record** y revisa solicitud, política, aprobación, permiso y resultado.
+5. Exporta el expediente JSON desde **Export record**.
+6. **Opcional:** en AI Gateway, revisa Connection, Models, Controls y Activity. El consumo real requiere una llamada a un proveedor configurado; la consola no inventa actividad.
+
+Solo las solicitudes que pasan por la integración protegida están controladas.

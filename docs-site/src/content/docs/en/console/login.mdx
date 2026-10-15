@@ -1,0 +1,37 @@
+---
+title: Sign in
+description: How to open the Deleguard console with the demo token and why it is not the agent API key.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The console is for **humans**. It lives on the same URLs as the API (`/login`). It is not where the agent authorizes.
+
+![Sign in to the console form with the Console token field](/console/login.png)
+
+<Steps>
+
+1. Open `http://127.0.0.1:5080/login` (or `:8080` in Compose).
+2. Paste the **Console token**. Locally: `dgc_demo_console_local_dev_only`.
+3. Click **Continue**. Deleguard sets the `deleguard_console` cookie and sends you to Overview.
+
+</Steps>
+
+If the token is wrong you see “That token is not valid.” Protected pages redirect here when there is no session.
+
+## Sign out
+
+In the sidebar footer, **Sign out** posts `POST /Login?handler=Logout` and returns to `/login`.
+
+<Aside type="caution" title="Two different secrets">
+| | Console | Agent |
+| --- | --- | --- |
+| Secret | `dgc_…` | `dgk_…` |
+| Where | This form (cookie) | `Authorization` header (Playground binds the selected agent; no pasted `dgk_`) |
+| Approve | Yes | No |
+| `POST /v1/authorize` | No | Yes |
+
+Pasting the agent API key into Login **does not** sign you in. Pasting the console token into authorize **does not** authorize.
+</Aside>
+
+In production this form is replaced by SSO. The rest of the menus stay the same.

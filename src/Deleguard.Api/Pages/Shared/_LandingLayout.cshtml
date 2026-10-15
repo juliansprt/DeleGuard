@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="@T.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@T[ViewData["Title"]?.ToString()] · Deleguard</title>
+    <partial name="_HeadAssets" />
+</head>
+<body class="landing-body">
+    <header class="landing-nav">
+        <a class="brand" href="/" style="padding:0">
+            <partial name="_BrandMark" />
+            <span class="brand-wordmark">Deleguard</span>
+        </a>
+        <div class="landing-nav-actions"><partial name="_LanguageSelector" />
+            <a class="button ghost" href="/login">@T["Sign in"]</a>
+            <a class="button" href="/login?register=1">@T["Create account"]</a>
+        </div>
+    </header>
+    <main>
+        @RenderBody()
+    </main>
+    <footer class="landing-foot">
+        <div class="landing-values">
+            <span>@T["Secure"]</span>
+            <span>@T["Empower"]</span>
+            <span>@T["Automate"]</span>
+            <span>@T["Together"]</span>
+        </div>
+        @T["AI agents. A safer tomorrow. Humans approve. Agents call"] <code>POST /v1/authorize</code>.
+    </footer>
+</body>
+</html>

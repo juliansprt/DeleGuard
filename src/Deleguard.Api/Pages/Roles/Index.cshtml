@@ -1,0 +1,11 @@
+@page "/roles"
+@model Deleguard.Api.Pages.Roles.IndexModel
+@{ ViewData["Title"]="Roles y permisos"; ViewData["Nav"]="roles"; }
+<partial name="_PageHeader" model='("Roles y permisos", "Revisa una responsabilidad a la vez. Los permisos están agrupados por módulo para facilitar la configuración.")' />
+<partial name="_Flash" model="new FlashModel(Model.Message,Model.IsError)" />
+<p class="quiet-note">@T["Empieza con los roles disponibles. Modificar un rol afecta a todas las personas que lo tienen."] @if(HttpContext.GetConsoleUser()?.HasPermission("users.read")==true){<a href="/users">@T["Asignar roles a una persona →"]</a>}</p>
+@foreach(var role in Model.Roles){
+<details class="card"><summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@role.DisplayName <span class="badge neutral">@role.Permissions.Count @T["permisos"]</span> <span class="hint">@role.Slug</span></summary>
+@if(Model.CanWrite){<form method="post" asp-page-handler="Save" class="stack" data-busy-form><input type="hidden" name="roleId" value="@role.Id" /><div class="permission-groups">@foreach(var group in Model.Catalog.GroupBy(p=>p.Name.Split('.')[0])){<fieldset><legend>@T[ConsoleGuide.Modules.FirstOrDefault(m=>m.Permission.StartsWith(group.Key+".",StringComparison.Ordinal))?.Title ?? group.Key]</legend>@foreach(var permission in group){<label class="check-row"><input type="checkbox" name="selected" value="@permission.Name" checked="@(role.Permissions.Contains(permission.Name))" /><span>@T[permission.Description]<small class="hint"><code>@permission.Name</code></small></span></label>}</fieldset>}</div><button type="submit" data-busy-label="@T["Guardando permisos…"]">@T["Guardar permisos de"] @role.DisplayName</button></form>}
+else{<p class="muted">@string.Join(", ",role.Permissions)</p>}
+</details>}

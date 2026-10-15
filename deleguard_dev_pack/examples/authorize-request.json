@@ -1,0 +1,24 @@
+{
+  "agent": {
+    "id": "invoice-agent",
+    "environment": "production"
+  },
+  "actor": {
+    "id": "usr_481",
+    "type": "human"
+  },
+  "action": "invoice.cancel",
+  "resource": {
+    "type": "invoice",
+    "id": "FAC-8392",
+    "attributes": {
+      "amount": 35000000,
+      "currency": "COP",
+      "status": "issued",
+      "reportedToTaxAuthority": true
+    }
+  },
+  "context": {
+    "reason": "duplicate invoice"
+  }
+}

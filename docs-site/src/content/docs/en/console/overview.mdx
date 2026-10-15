@@ -1,0 +1,33 @@
+---
+title: Overview
+description: Operational attention, coverage, and integration progress per application.
+---
+
+Use **Agents, Actions, and Policies directly with `POST /v1/authorize`**, without configuring AI Gateway, providers, models, budgets, or Guard MCP. Your application enforces the decision before executing and can report the result with `POST /v1/executions`. AI Gateway is optional for model calls; Guard MCP is optional for MCP tools.
+
+**Overview** shows the selected application's operational state. Main navigation connects Agents, Actions, Policies, AI Gateway, Approvals, and Activity. Administration lives under Settings.
+
+![Deleguard operational overview](/console/overview.png)
+
+## Metrics
+
+Cards open their matching lists: pending approvals, incomplete assignments, allowed decisions without evidence, reported failures today, monthly settled spend, and budget denials. Periods use UTC. Overview spend belongs to the selected application; the Gateway budget belongs to the organization.
+
+Daily counts cover the entire period, not the latest event sample. Denials count the original authorization decision.
+
+## Connect an agent
+
+Open **Connect my agent**. Select the application, create or choose an agent and environment, assign a published policy together with its action, then open the test. Existing assignments for other agents are preserved.
+
+Progress separates configuration, tested authorization, and reported execution. Playground does not prove a production connection. Evidence is reported by the integration, not independently verified.
+
+## Demonstration
+
+1. Inspect the agent detail and coverage.
+2. Test allowed, denied, and approval-required `invoice.cancel` scenarios in Playground.
+3. Resolve the approval in Approvals and continue the test flow.
+4. Open the decision record to follow the request, policy, approval, permit, and result.
+5. Export its JSON record.
+6. Inspect AI Gateway Connection, Models, Controls, and Activity. Real provider usage requires a configured provider call; the console does not manufacture activity.
+
+Only requests routed through the protected integration are controlled.

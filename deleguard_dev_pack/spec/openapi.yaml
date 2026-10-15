@@ -1,0 +1,391 @@
+openapi: 3.1.0
+info:
+  title: Deleguard Authorization API
+  version: 1.0.0-beta.1
+  description: Private beta contract. ALLOW requires atomic permit consumption before execution. Unknown outcomes must not be retried automatically.
+servers:
+  - url: https://api.deleguard.example
+paths:
+  /v1/authorize:
+    post:
+      operationId: authorize
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthorizationRequest' }
+      responses:
+        '200':
+          description: Evaluated authorization decision.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizationDecision' }
+        '400': { description: Invalid request }
+        '401': { description: Invalid client/agent credential }
+        '429': { description: Rate limited }
+        '503': { description: Authorization service unavailable }
+  /v1/permits/{permitId}/consume:
+    post:
+      operationId: consumePermit
+      description: Atomically acquire execution once. Only acquired=true permits the trusted integration to execute. A repeated claim returns the existing execution without permission to execute again.
+      parameters:
+        - in: path
+          name: permitId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsumePermit' }
+      responses:
+        '200':
+          description: Durable claim, including duplicate claims.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [acquired, already_consumed, execution_id]
+                properties:
+                  acquired: { type: boolean }
+                  already_consumed: { type: boolean }
+                  execution_id: { type: string }
+        '404': { description: No permit in the caller scope }
+        '409': { description: Binding changed, revoked, expired, suspended, legacy or otherwise invalid permission }
+  /v1/operations/{operationId}:
+    get:
+      operationId: findOperation
+      parameters:
+        - in: path
+          name: operationId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Current decision in the authenticated agent scope.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizationDecision' }
+        '404': { description: Operation not found in scope }
+  /v1/evaluations:
+    post:
+      operationId: evaluateOnly
+      description: Evaluate current policy against supplied metadata. Does not issue a permit, persist a decision, execute a tool or call a model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EvaluationRequest' }
+      responses:
+        '200':
+          description: Simulation result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [decision, simulation]
+                properties:
+                  decision: { type: string, enum: [ALLOW, DENY, REQUIRE_APPROVAL] }
+                  simulation: { const: true }
+                  reason: { type: [string, 'null'] }
+                  policy_id: { type: [string, 'null'] }
+                  policy_version: { type: [integer, 'null'] }
+  /v1/decisions/{decisionId}:
+    get:
+      operationId: getDecision
+      parameters:
+        - in: path
+          name: decisionId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Decision state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizationDecision' }
+  /v1/approvals/{approvalId}/approve:
+    post:
+      operationId: approve
+      parameters:
+        - in: path
+          name: approvalId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expires_at: { type: string, format: date-time }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200': { description: Approved and permit issued }
+  /v1/approvals/{approvalId}/deny:
+    post:
+      operationId: denyApproval
+      parameters:
+        - in: path
+          name: approvalId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Approval denied }
+  /v1/executions:
+    post:
+      operationId: reportExecution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExecutionEvidence' }
+      responses:
+        '202': { description: Receipt accepted, including identical retries }
+        '409': { description: No consumed execution or mismatched/conflicting receipt }
+  /v1/guard/config:
+    get:
+      operationId: getGuardConfig
+      tags: [Authorization]
+      description: Agent-authenticated MCP tool mappings. No policy YAML or secrets.
+      responses:
+        '200':
+          description: Guard PEP mappings for the calling agent.
+        '401': { description: Invalid agent credential }
+  /v1/webhooks:
+    get:
+      operationId: listWebhooks
+      tags: [Webhooks]
+      responses:
+        '200': { description: Webhook endpoints for the tenant }
+    post:
+      operationId: createWebhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWebhook' }
+      responses:
+        '201': { description: Endpoint created; signing secret shown once }
+  /v1/webhooks/{endpointId}:
+    get:
+      operationId: getWebhook
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Endpoint }
+    patch:
+      operationId: updateWebhook
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWebhook' }
+      responses:
+        '200': { description: Endpoint updated }
+  /v1/webhooks/{endpointId}/rotate-secret:
+    post:
+      operationId: rotateWebhookSecret
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: New signing secret shown once }
+  /v1/webhooks/{endpointId}/ping:
+    post:
+      operationId: pingWebhook
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Ping attempted }
+  /v1/webhooks/{endpointId}/attempts:
+    get:
+      operationId: listWebhookAttempts
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Delivery attempts }
+  /v1/webhooks/{endpointId}/messages/{messageId}/resend:
+    post:
+      operationId: resendWebhookMessage
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: messageId
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Message requeued and attempted }
+  /v1/webhooks/{endpointId}/recover:
+    post:
+      operationId: recoverWebhook
+      tags: [Webhooks]
+      parameters:
+        - in: path
+          name: endpointId
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                since: { type: string, format: date-time }
+                until: { type: string, format: date-time }
+              required: [since, until]
+      responses:
+        '200': { description: Failed messages requeued }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    AgentRef:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string }
+        environment: { type: string }
+    ActorRef:
+      type: object
+      required: [id, type]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [human, service] }
+        delegation_id: { type: [string, 'null'] }
+    Resource:
+      type: object
+      required: [type, id]
+      properties:
+        type: { type: string }
+        id: { type: string }
+        attributes: { type: object, additionalProperties: true }
+        snapshot_hash: { type: [string, 'null'] }
+    AuthorizationRequest:
+      type: object
+      required: [agent, action, resource, operation]
+      properties:
+        operation: { $ref: '#/components/schemas/Operation' }
+        agent: { $ref: '#/components/schemas/AgentRef' }
+        actor: { $ref: '#/components/schemas/ActorRef' }
+        action: { type: string, pattern: '^[a-z][a-z0-9_.:-]{1,127}$' }
+        resource: { $ref: '#/components/schemas/Resource' }
+        context: { type: object, additionalProperties: true }
+    EvaluationRequest:
+      type: object
+      required: [action, resource]
+      properties:
+        agent: { $ref: '#/components/schemas/AgentRef' }
+        actor: { $ref: '#/components/schemas/ActorRef' }
+        action: { type: string }
+        resource: { $ref: '#/components/schemas/Resource' }
+        context: { type: object, additionalProperties: true }
+    Operation:
+      type: object
+      required: [id, hash]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 128, description: Stable intent identity preserved on retries; new intent may repeat arguments. }
+        hash: { type: string, pattern: '^[a-f0-9]{64}$', description: SHA-256 of canonical execution arguments and target. }
+    ConsumePermit:
+      type: object
+      required: [operation_id, operation_hash, resource_snapshot_hash]
+      properties:
+        operation_id: { type: string }
+        operation_hash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        resource_snapshot_hash: { type: string }
+    Execution:
+      type: object
+      required: [execution_id, operation_id, state, verification, consumed_at]
+      properties:
+        execution_id: { type: string }
+        operation_id: { type: string }
+        state: { type: string, enum: [SUCCESS, FAILED, PARTIAL, UNKNOWN] }
+        verification: { type: string, enum: [UNVERIFIED, REPORTED, UNKNOWN], description: This beta does not expose independent verification. Client reports cannot assert VERIFIED. }
+        consumed_at: { type: string, format: date-time }
+        reported_at: { type: [string, 'null'], format: date-time }
+        provider_reference: { type: [string, 'null'] }
+    AuthorizationDecision:
+      type: object
+      required: [decision, decision_id]
+      properties:
+        decision: { type: string, enum: [ALLOW, DENY, REQUIRE_APPROVAL] }
+        decision_id: { type: string }
+        reason: { type: [string, 'null'] }
+        policy_id: { type: [string, 'null'] }
+        policy_version: { type: [string, integer, 'null'] }
+        permit: { type: [string, 'null'] }
+        permit_id: { type: [string, 'null'] }
+        operation:
+          anyOf:
+            - { $ref: '#/components/schemas/Operation' }
+            - { type: 'null' }
+        resource_snapshot_hash: { type: [string, 'null'] }
+        execution:
+          anyOf:
+            - { $ref: '#/components/schemas/Execution' }
+            - { type: 'null' }
+        approval_id: { type: [string, 'null'] }
+        expires_at: { type: [string, 'null'], format: date-time }
+    ExecutionEvidence:
+      description: Idempotent receipt for an already consumed execution. Late receipts do not restore execution rights. Conflicting terminal receipts return 409.
+      type: object
+      required: [decision_id, execution_id, resource_snapshot_hash, status]
+      properties:
+        decision_id: { type: string }
+        permit_id: { type: [string, 'null'] }
+        execution_id: { type: string }
+        resource_snapshot_hash: { type: string }
+        status: { type: string, enum: [SUCCESS, FAILED, PARTIAL, UNKNOWN] }
+        provider_reference: { type: [string, 'null'] }
+        result_hash: { type: [string, 'null'] }
+        metadata: { type: object, additionalProperties: true }
+    CreateWebhook:
+      type: object
+      required: [description, url]
+      properties:
+        description: { type: string, maxLength: 200 }
+        url: { type: string, format: uri }
+        event_types:
+          type: array
+          items: { type: string }
+    UpdateWebhook:
+      type: object
+      properties:
+        description: { type: string, maxLength: 200 }
+        url: { type: string, format: uri }
+        event_types:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [enabled, disabled] }
+security:
+  - bearerAuth: []

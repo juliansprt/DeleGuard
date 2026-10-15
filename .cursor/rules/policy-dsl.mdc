@@ -1,0 +1,13 @@
+---
+description: Deleguard product policy DSL. Use when editing YAML policies or the native PDP.
+globs: "policies/**/*.yaml,src/Deleguard.Policy/**/*.cs"
+alwaysApply: false
+---
+
+# Policy DSL
+
+- Author policies in product YAML, never engine-specific Rego.
+- Every published policy needs fixtures under `policies/fixtures/` with expected ALLOW/DENY/REQUIRE_APPROVAL.
+- Precedence: explicit DENY > REQUIRE_APPROVAL > ALLOW > fallback DENY.
+- Conditions use `field` / `op` / `value` or `all` / `any`. Missing fields fail the condition.
+- Add a unit test when adding an operator or changing precedence.

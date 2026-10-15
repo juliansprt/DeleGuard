@@ -1,0 +1,8 @@
+{
+  "hook_event_name": "preToolUse",
+  "cursor_version": "3.17.19",
+  "conversation_id": "deleguard-hook-transport-diagnostic",
+  "tool_use_id": "unmapped-transport-probe",
+  "tool_name": "DeleGuardUnmappedDiagnostic",
+  "tool_input": { "label": "diagnóstico sin operación" }
+}

@@ -1,0 +1,346 @@
+@page "/policies/{id}"
+@model Deleguard.Api.Pages.Policies.DetailModel
+@{
+    ViewData["Title"] = Model.Policy?.Slug ?? "Policy";
+    ViewData["Nav"] = "policies";
+}
+
+@if (Model.Policy is null)
+{
+    <partial name="_PageHeader" model='("Policy", "This policy is not in the current tenant.")' />
+    <div class="card">
+        <partial name="_EmptyState" model='new EmptyStateModel("Not found", "It may have been removed or the id is wrong.", "/policies", "Back to policies")' />
+    </div>
+}
+else
+{
+    <header class="page-header">
+        <div>
+            <p class="crumbs"><a href="/policies">@T["Policies"]</a><span aria-hidden="true">/</span><span>@Model.Policy.Slug</span></p>
+            <h1>@Model.Policy.Slug</h1>
+            <p class="lede">@T["Authorize only reads"] <strong>@T["Published"]</strong> @T["versions. Test evaluates the editor YAML without persisting a decision."]</p>
+            <p class="policy-meta">
+                <span class="badge neutral">@T["Fail-closed"]</span>
+                <span class="badge wait">@T["Fallback DENY"]</span>
+                @if (Model.PublishedVersionNumber is int published)
+                {
+                    <span class="badge allow">@T["Authorize uses v"]@(published)</span>
+                }
+                else
+                {
+                    <span class="badge wait">@T["Draft"]</span>
+                }
+                <span class="muted">@T["Visual edits regenerate canonical YAML. Comments are not preserved."]</span>
+            </p>
+        </div>
+        <div class="page-actions">
+            <a class="button ghost" href="/policies">@T["All policies"]</a>
+            @if (Model.CanWrite && Model.CanDelete)
+            {
+                <form method="post" asp-page-handler="Delete">
+                    <button type="submit"
+                            class="ghost"
+                            data-confirm
+                            data-confirm-title="@T.Format("Delete {0}?", Model.Policy.Slug)"
+                            data-confirm-body="@T["Authorize will stop using this policy. The action is DENY if no other published policy remains."]"
+                            data-confirm-action="@T["Delete policy"]"
+                            data-confirm-danger="true">@T["Delete"]</button>
+                </form>
+            }
+        </div>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.PendingApprovalId))
+    {
+        <div class="flash flash-ok" role="status">
+            @T["Waiting for approval."] <a href="/approvals/@Model.PendingApprovalId">@T["Open"] @Model.PendingApprovalId</a>
+        </div>
+    }
+    else
+    {
+        <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+    }
+
+    <div class="policy-layout">
+        <form method="post" id="policy-form" class="policy-main policy-workspace" data-policy-form>
+        <div class="policy-toolbar" style="position:sticky;top:0;z-index:5;background:var(--surface, #fff)">
+            <div class="editor-tabs" role="tablist" aria-label="@T["Policy editor mode"]">
+                <button type="button" class="tab @(Model.DefaultEditorTab == "visual" ? "active" : null)" data-editor-tab="visual" role="tab" aria-selected="@(Model.DefaultEditorTab == "visual" ? "true" : "false")" disabled="@(!Model.VisualSupported)">Visual</button>
+                <button type="button" class="tab @(Model.DefaultEditorTab == "yaml" ? "active" : null)" data-editor-tab="yaml" role="tab" aria-selected="@(Model.DefaultEditorTab == "yaml" ? "true" : "false")">YAML</button>
+            </div>
+            <div class="policy-toolbar-actions">
+                <span class="badge wait" data-unsaved-indicator hidden role="status">@T["Unsaved changes"]</span>
+                <button type="submit" asp-page-handler="Compare" class="ghost">@T["Compare saved cases"]</button>
+                @if (Model.CanWrite)
+                {
+                    <button type="submit" asp-page-handler="SaveVersion">@T["Save draft"]</button>
+                }
+                <span class="muted">@T["Authorize uses"] @(Model.PublishedVersionNumber is int live ? $"v{live}" : T["nothing until publish"])</span>
+            </div>
+        </div>
+
+                <div class="card">
+                    @if (!Model.VisualSupported)
+                    {
+                        <p class="hint" data-editor-unsupported>@T["Visual cannot project this YAML"]@(string.IsNullOrWhiteSpace(Model.EditorParseError) ? "." : ": " + T.Message(Model.EditorParseError)) @T["Nested"] <code>all</code>/<code>any</code> @T["groups stay on the YAML tab."]</p>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(Model.EditorParseError))
+                    {
+                        <p class="flash flash-err">@T.Message(Model.EditorParseError)</p>
+                    }
+                    <p class="flash flash-err" data-editor-warning hidden></p>
+                    <input type="hidden" asp-for="EditorTab" data-editor-tab-field />
+                    <div data-policy-visual hidden></div>
+                    <div data-policy-yaml>
+                        <div class="yaml-host" data-yaml-host></div>
+                        <textarea asp-for="Yaml" id="Yaml" class="yaml-source" spellcheck="false"></textarea>
+                        <p class="hint">@T["Customer contract. Save writes a new draft; it does not publish. Comments are not preserved from the visual editor."]</p>
+                    </div>
+                </div>
+                <details class="card">
+                    <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Published YAML reference ·"] @(Model.PublishedVersionNumber is int referenceVersion ? $"v{referenceVersion}" : T["No published version"])</summary>
+                    <p class="hint">@T["Compare this published source with the candidate in the editor. Saved cases below show decision changes."]</p>
+                    <pre style="white-space:pre-wrap">@(Model.PublishedYaml ?? T["This policy has not been published."])</pre>
+                </details>
+        </form>
+
+            <aside class="policy-rail">
+                <div class="card">
+                    <h2>@T["Agents"]</h2>
+                    @if (Model.IsCatalog)
+                    {
+                        <p class="hint">@T["Bound to"] <code>admin-mcp</code>@T[". Administration catalog grants cannot be edited."]</p>
+                    }
+                    else if (Model.CanWrite)
+                    {
+                        <form method="post" asp-page-handler="Agents" class="stack">
+                            <p class="hint">@T["Must be a subset of the action's agents. Authorize DENYs callers that are not assigned."]</p>
+                            @foreach (var agent in Model.AssignableAgents)
+                            {
+                                <label class="row" style="gap:0.4rem">
+                                    <input type="checkbox" name="SelectedAgentIds" value="@agent.Id" checked="@(Model.SelectedAgentIds.Contains(agent.Id))" />
+                                    <span>@agent.DisplayName <code>@agent.ExternalId</code></span>
+                                </label>
+                            }
+                            <button type="submit" class="ghost">@T["Save agents"]</button>
+                        </form>
+                    }
+                    else if (Model.AssignableAgents.Count == 0)
+                    {
+                        <p class="muted">—</p>
+                    }
+                    else
+                    {
+                        <ul class="stack" style="list-style:none;padding:0;margin:0">
+                            @foreach (var agent in Model.AssignableAgents.Where(item => Model.SelectedAgentIds.Contains(item.Id)))
+                            {
+                                <li>@agent.DisplayName <code>@agent.ExternalId</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="card">
+                    <h2>@T["Versions"]</h2>
+            @if (Model.LoadedVersionNumber is int loaded)
+            {
+                <p class="hint">@T["Editor is showing v"]@(loaded)@T[". Load another version to compare, then save a new draft."]</p>
+            }
+            @if (Model.Versions.Count == 0)
+            {
+                <partial name="_EmptyState" model='new EmptyStateModel("No versions yet", "Save the editor as a draft to start the timeline.")' />
+            }
+            else
+            {
+                <ol class="versions">
+                    @foreach (var version in Model.Versions.OrderByDescending(v => v.Version))
+                    {
+                        var isLoaded = string.Equals(version.Id, Model.LoadedVersionId, StringComparison.Ordinal);
+                        <li class="@(isLoaded ? "is-loaded" : null)">
+                            <strong>v@(version.Version)</strong>
+                            <span>
+                                @version.Action
+                                @if (version.Published)
+                                {
+                                    <span class="badge allow">@T["Published"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge wait">@T["Draft"]</span>
+                                }
+                                @if (isLoaded)
+                                {
+                                    <span class="badge neutral">@T["Loaded"]</span>
+                                }
+                            </span>
+                            <span class="muted">@version.CreatedAt.UtcDateTime.ToString("u")</span>
+                            <span class="row">
+                                <a class="button ghost" href="/policies/@Model.Policy.Id?version=@Uri.EscapeDataString(version.Id)">@T["Load into editor"]</a>
+                                @if (Model.CanPublish && !version.Published)
+                                {
+                                    <form method="post" asp-page-handler="Publish">
+                                        <input type="hidden" name="versionId" value="@version.Id" />
+                                        <button type="submit"
+                                                class="ghost"
+                                                data-confirm
+                                                data-confirm-title="@T["Publish this version?"]"
+                                                data-confirm-body="@T["Authorize will use this version immediately. There is no schedule. Drafts currently in the editor are not published unless they are this version."]"
+                                                data-confirm-action="@T["Publish"]"
+                                                data-confirm-danger="true">@T["Publish"]</button>
+                                    </form>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ol>
+            }
+                </div>
+
+                <details class="card" id="simulator" @(Model.TestResult is not null || Model.CaseComparisons is not null ? "open" : null)>
+                    <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Simulator"]</summary>
+                    <p class="muted">@T["Runs the editor YAML against a fixture. Does not write an audit decision."]</p>
+                    <div class="policy-summary">
+                        <p>
+                            <label for="AgentId">@T["Agent"]</label>
+                            <input asp-for="AgentId" id="AgentId" form="policy-form" list="policy-agent-list" autocomplete="off" spellcheck="false" />
+                        </p>
+                        <p>
+                            <label for="EnvironmentName">@T["Environment"]</label>
+                            <input asp-for="EnvironmentName" id="EnvironmentName" form="policy-form" list="policy-environment-list" autocomplete="off" spellcheck="false" />
+                        </p>
+                        <p>
+                            <label for="ResourceId">@T["Resource id"]</label>
+                            <input asp-for="ResourceId" id="ResourceId" form="policy-form" autocomplete="off" spellcheck="false" />
+                        </p>
+                        <p>
+                            <label for="ExpectedEffect">@T["Expected effect"]</label>
+                            <select asp-for="ExpectedEffect" id="ExpectedEffect" form="policy-form">
+                                <option value="">@T["Evaluate only"]</option>
+                                <option>ALLOW</option>
+                                <option>DENY</option>
+                                <option>REQUIRE_APPROVAL</option>
+                            </select>
+                        </p>
+                    </div>
+                    <p class="hint">@T["Presets fill resource attributes for the invoice.cancel demo."]</p>
+                    <p class="row fixture-presets">
+                        <button type="button" class="ghost" data-fixture-preset='@DetailModel.DraftLowJson'>@T["Draft low"]</button>
+                        <button type="button" class="ghost" data-fixture-preset='@DetailModel.HighValueJson'>@T["High value"]</button>
+                        <button type="button" class="ghost" data-fixture-preset='@DetailModel.TaxReportedJson'>@T["Tax reported"]</button>
+                    </p>
+                    <details class="tech">
+                        <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Resource attributes JSON"]</summary>
+                        <p>
+                            <label class="sr-only" for="FixtureJson">@T["Resource attributes JSON"]</label>
+                            <textarea asp-for="FixtureJson" id="FixtureJson" form="policy-form" class="short" spellcheck="false" data-fixture-json></textarea>
+                        </p>
+                    </details>
+                    <div class="row" style="margin-top:0.85rem">
+                        <button type="submit" form="policy-form" asp-page-handler="Test">@T["Test"]</button>
+                    </div>
+                    @if (Model.CanWrite)
+                    {
+                        <p><label for="CaseName">@T["Save as regression case"]</label><input asp-for="CaseName" form="policy-form" maxlength="160" placeholder="@T["For example: deny tax-reported invoice"]" /></p>
+                        <button type="submit" form="policy-form" asp-page-handler="SaveCase" class="ghost">@T["Save case"]</button>
+                    }
+                    <h3>@T["Saved regression cases ("]@Model.SavedCases.Count)</h3>
+                    <p class="hint">@T["Publication requires at least one case and every expected decision must pass. Simulations evaluate this policy alone; agent grants and other policies are checked by live authorization."]</p>
+                    @foreach (var fixture in Model.SavedCases)
+                    {
+                        <div class="row">
+                            <span>@fixture.Name @T["· expected"] <strong>@fixture.ExpectedEffect</strong></span>
+                            @if (Model.CanWrite)
+                            {
+                                <form method="post" asp-page-handler="DeleteCase"><input type="hidden" name="caseId" value="@fixture.Id" /><button type="submit" class="ghost" aria-label="@T.Format("Remove case {0}", fixture.Name)">@T["Remove"]</button></form>
+                            }
+                        </div>
+                    }
+                    @if (Model.CaseComparisons is not null)
+                    {
+                        @if (Model.CaseComparisons.Count == 0)
+                        {
+                            <p role="status">@T["Save a case with an expected decision to compare versions."]</p>
+                        }
+                        @foreach (var result in Model.CaseComparisons)
+                        {
+                            <div class="flash @(result.Candidate.Passed ? "flash-ok" : "flash-err")">
+                                <strong>@result.Name · @(result.Candidate.Passed ? T["PASS"] : T["FAIL"])</strong>
+                                <p>@T["Published:"] @(result.Published?.ActualEffect ?? T["Not published"]) @T["→ candidate:"] @result.Candidate.ActualEffect @T["· expected"] @result.Candidate.ExpectedEffect</p>
+                                @if (result.DecisionChanged) { <span class="badge wait">@T["Decision changed"]</span> }
+                                <p>@result.Candidate.Reason</p>
+                            </div>
+                        }
+                    }
+                    @if (Model.TestResult is not null)
+                    {
+                        var hasExpected = Model.TestResult.ExpectedEffect is not null;
+                        var flashClass = !hasExpected ? "flash" : Model.TestResult.Passed ? "flash-ok" : "flash-err";
+                        var matched = string.IsNullOrWhiteSpace(Model.TestResult.MatchedRule)
+                            ? T.Format("No rule matched → fallback {0}", Model.TestResult.ActualEffect)
+                            : T.Format("Matched rule {0}", Model.TestResult.MatchedRule);
+                        <div class="flash @flashClass" style="margin-top:1rem" aria-live="polite">
+                            @if (hasExpected)
+                            {
+                                <span class="badge @(Model.TestResult.Passed ? "allow" : "deny")">@(Model.TestResult.Passed ? T["PASS"] : T["FAIL"])</span>
+                            }
+                            else
+                            {
+                                <span class="badge wait">@T["Evaluated"]</span>
+                            }
+                            <strong> @Model.TestResult.ActualEffect</strong>
+                            @if (hasExpected)
+                            {
+                                <span> @T["· expected"] @Model.TestResult.ExpectedEffect</span>
+                            }
+                            <p class="muted" style="margin:0.4rem 0 0">@matched</p>
+                            <p class="muted" style="margin:0.25rem 0 0">@Model.TestResult.Reason · v@(Model.TestResult.PolicyVersion)</p>
+                        </div>
+                    }
+                </details>
+            </aside>
+        </div>
+
+    <datalist id="policy-action-list">
+        @foreach (var name in Model.ActionNames)
+        {
+            <option value="@name"></option>
+        }
+    </datalist>
+    <datalist id="policy-field-list">
+        @foreach (var path in Model.FieldPaths)
+        {
+            <option value="@path"></option>
+        }
+    </datalist>
+    <datalist id="policy-agent-list">
+        @foreach (var agent in Model.AgentIds)
+        {
+            <option value="@agent"></option>
+        }
+    </datalist>
+    <datalist id="policy-environment-list">
+        @foreach (var environment in Model.EnvironmentNames)
+        {
+            <option value="@environment"></option>
+        }
+    </datalist>
+    <script type="application/json" id="policy-editor-state">@Html.Raw(Model.EditorStateJson)</script>
+
+    @if (Model.CanPublish || Model.CanDelete)
+    {
+        <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-body">
+            <form method="dialog" class="stack">
+                <h2 id="confirm-title">@T["Confirm"]</h2>
+                <p id="confirm-body" class="muted"></p>
+                <p class="row" style="margin:0">
+                    <button type="submit" value="cancel" class="ghost">@T["Cancel"]</button>
+                    <button type="submit" value="confirm" id="confirm-ok">@T["Confirm"]</button>
+                </p>
+            </form>
+        </dialog>
+    }
+}
+
+@section Scripts {
+    <script src="~/js/policy-editor.js" asp-append-version="true"></script>
+    <script type="module" src="~/js/policy-yaml-editor.js" asp-append-version="true"></script>
+}

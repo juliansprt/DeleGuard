@@ -1,0 +1,11 @@
+id: "ide-extension-install"
+version: 1
+priority: 100
+match:
+  action: "extension.install"
+  resource_type: "extension"
+rules:
+  - name: "deny-extension-install"
+    effect: "DENY"
+    reason: "IDE extension installation requires an administrator-authored allow policy."
+fallback: "DENY"

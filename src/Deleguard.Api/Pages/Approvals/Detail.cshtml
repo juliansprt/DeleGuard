@@ -1,0 +1,58 @@
+@page "/approvals/{id}"
+@model Deleguard.Api.Pages.Approvals.DetailModel
+@{
+    ViewData["Title"] = "Review approval";
+    ViewData["Nav"] = "approvals";
+    var facts = Model.Facts;
+}
+
+@if (Model.Approval is null)
+{
+    <partial name="_PageHeader" model='("Approval", "This request is not in the current tenant.")' />
+    <div class="card">
+        <partial name="_EmptyState" model='new EmptyStateModel("Not found", "The approval may have expired or belongs to another environment.", "/approvals", "Back to queue")' />
+    </div>
+}
+else
+{
+    <header class="page-header">
+        <div>
+            <h1>@facts.Headline</h1>
+            <p class="lede">@T["Review the action and resource below. Approval permits this operation for a limited time; denial stops it."]</p>
+        </div>
+        <div class="page-actions">
+            <span class="badge @(Model.Approval.Status == Deleguard.Domain.Common.ApprovalStatus.Pending ? "wait" : Model.Approval.Status == Deleguard.Domain.Common.ApprovalStatus.Approved ? "allow" : "deny")">@T[Model.Approval.Status.ToString()]</span>
+        </div>
+    </header>
+
+    <partial name="_Flash" model="new FlashModel(Model.Message, Model.IsError)" />
+
+    <div class="card">
+        <h2>@T["Why your review is needed"]</h2><p>@(Model.Reason ?? T["A published policy requires human approval."])</p><dl class="facts large">
+            @foreach (var row in facts.Rows)
+            {
+                <dt>@T[row.Label]</dt>
+                <dd>@row.Value</dd>
+            }
+            <dt>@T["Expires"]</dt>
+            <dd>@ConsoleFormatting.RelativeExpiry(Model.Approval.ExpiresAt, DateTimeOffset.UtcNow) · @Model.Approval.ExpiresAt.UtcDateTime.ToString("u")</dd>
+        </dl>
+
+        @if (Model.Approval.Status == Deleguard.Domain.Common.ApprovalStatus.Pending && Model.Approval.ExpiresAt > DateTimeOffset.UtcNow && Model.CanResolve)
+        {
+            <form method="post" class="row approval-actions" style="margin-top:1.25rem">
+                <button asp-page-handler="Approve">@T["Approve once"]</button>
+                <button asp-page-handler="Deny" class="secondary" onclick="return confirm(window.dgText('js.approval.deny'));">@T["Deny"]</button>
+            </form>
+        }
+
+        @if (HttpContext.GetConsoleUser()?.HasPermission("audit.read") == true) { <p><a href="/audit/decisions/@Model.Approval.DecisionId">@T["View decision record"]</a></p> }
+        <details class="tech">
+            <summary data-expand-label="@T["Show"]" data-collapse-label="@T["Hide"]">@T["Technical details"]</summary>
+            <p class="muted">@T["Decision"] @Model.Approval.DecisionId @T["· Approval"] @Model.Approval.Id</p>
+            <pre class="hash">@Model.PrettyFacts</pre>
+        </details>
+    </div>
+}
+
+@if (HttpContext.GetConsoleUser()?.HasPermission("policies.write") == true) { <p><a href="/ide">@T["IDE directory access and temporary grants"]</a> @T["� YAML approval requirements cannot be bypassed by a grant."]</p> }

@@ -1,0 +1,96 @@
+---
+title: Quick start
+description: Run Deleguard locally and get ALLOW, DENY, and REQUIRE_APPROVAL in one pass.
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Aside type="note">
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and Docker Desktop (Postgres and Redis only). The API and worker run on the host.
+</Aside>
+
+<Steps>
+
+1. **Start the data stores**
+
+   If Docker is low on disk, use the `tmpfs` overlay (Postgres does not persist):
+
+   ```powershell
+   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d postgres redis
+   ```
+
+   Persistent volume:
+
+   ```powershell
+   docker compose -f deploy/docker-compose.yml up -d postgres redis
+   ```
+
+2. **Start the API** (and the worker in another terminal)
+
+   ```powershell
+   dotnet run --project src/Deleguard.Api --no-launch-profile --urls http://127.0.0.1:5080
+   dotnet run --project src/Deleguard.Workers --no-launch-profile
+   ```
+
+   Check `http://127.0.0.1:5080/health` → `Healthy`.
+
+3. **Open the console**
+
+   1. Go to `http://127.0.0.1:5080/login`.
+   2. Token: `dgc_demo_console_local_dev_only`.
+   3. Open [Playground](/en/console/playground/), pick the agent, and click **Authorize**. You do not paste a `dgk_`. The **ALLOW** / **APPROVAL** / **DENY** chips fill JSON generated from that action’s published policy.
+
+4. **Authorize the three demo invoices**
+
+   <Tabs>
+   <TabItem label="Python">
+
+   ```powershell
+   $env:DELEGUARD_URL = "http://127.0.0.1:5080"
+   python examples/python/authorize_demo.py
+   ```
+
+   </TabItem>
+   <TabItem label=".NET">
+
+   ```powershell
+   $env:DELEGUARD_URL = "http://127.0.0.1:5080"
+   ```
+
+   Run `examples/dotnet/AuthorizeDemo.cs` from a console project (or `dotnet script` if you use it).
+
+   </TabItem>
+   <TabItem label="HTTP">
+
+   ```powershell
+   curl.exe -s http://127.0.0.1:5080/v1/authorize `
+     -H "Authorization: Bearer dgk_demo_invoice_agent_local_dev_only" `
+     -H "Idempotency-Key: demo-draft-001" `
+     -H "Content-Type: application/json" `
+     -d "{\"agent\":{\"id\":\"invoice-agent\",\"environment\":\"production\"},\"actor\":{\"id\":\"usr_481\",\"type\":\"human\"},\"action\":\"invoice.cancel\",\"resource\":{\"type\":\"invoice\",\"id\":\"FAC-DRAFT\",\"attributes\":{\"amount\":5000000,\"currency\":\"COP\",\"status\":\"draft\",\"reportedToTaxAuthority\":false}},\"context\":{\"reason\":\"demo\"}}"
+   ```
+
+   </TabItem>
+   </Tabs>
+
+</Steps>
+
+## What you should see
+
+| Resource | Attributes | Decision |
+| --- | --- | --- |
+| `FAC-DRAFT` | draft, 5_000_000 | `ALLOW` |
+| `FAC-8392` / `FAC-HIGH` | issued, ≥ 10_000_001 | `REQUIRE_APPROVAL` |
+| `FAC-TAX` | `reportedToTaxAuthority: true` | `DENY` |
+
+<Aside type="caution" title="DENY is not an HTTP error">
+`DENY` arrives as **HTTP 200** with `decision=DENY`. 401/400/503 mean credential, schema, or outage — never a fabricated ALLOW.
+</Aside>
+
+## Demo credentials (local only)
+
+- Agent: `dgk_demo_invoice_agent_local_dev_only`
+- Console: `dgc_demo_console_local_dev_only`
+- Org: `org_demo` · external agent: `invoice-agent` · action: `invoice.cancel`
+
+Next: [full environment](/en/start/environment/) or [integrate with an LLM](/en/integrate/with-llm/).

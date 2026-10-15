@@ -1,0 +1,126 @@
+---
+title: Configurar el entorno
+description: Requisitos, Docker Compose, variables de entorno, seed demo y notas de producción para Deleguard.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Esta guía cubre el entorno **local** (el que usa el equipo) y el **Compose completo**. El motor de políticas es YAML nativo (`Deleguard.Policy`), no OPA.
+
+## Requisitos
+
+- SDK **.NET 10**
+- Docker Desktop (imágenes Alpine: Postgres 16 + Redis 7)
+- Opcional: Python 3 para `examples/python/authorize_demo.py`
+
+## Topología
+
+```text
+Clientes HTTP / consola
+  → API ASP.NET (stateless)
+      → PostgreSQL  (fuente de verdad: decisiones, permisos, audit)
+      → Redis       (caché opcional; no es fuente de verdad)
+      → Worker      (outbox + caducidad de aprobaciones)
+```
+
+| Superficie | Host .NET | Compose |
+| --- | --- | --- |
+| API + consola | `http://127.0.0.1:5080` | `http://localhost:8082` |
+| Health | `/health` | `/health` |
+| Login | `/login` | `/login` |
+| Docs | `http://localhost:4321` | `http://localhost:4321` |
+| OpenAPI runtime | `/openapi/v1.json` | `/openapi/v1.json` |
+
+## Opción A — data stores en Docker, API en el host
+
+Recomendada cuando Docker no puede tirar `mcr.microsoft.com/dotnet/sdk:10.0`.
+
+```powershell
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up -d postgres redis
+dotnet run --project src/Deleguard.Api --no-launch-profile --urls http://127.0.0.1:5080
+dotnet run --project src/Deleguard.Workers --no-launch-profile
+```
+
+`docker-compose.dev.yml` monta Postgres en **tmpfs**: al parar el contenedor se pierde el volumen. Para persistir, omite ese overlay.
+
+## Opción B — stack completo en Compose
+
+Cuando hay disco suficiente para las imágenes .NET 10:
+
+```powershell
+docker compose -f deploy/docker-compose.yml up --build
+```
+
+La misma imagen sirve API y worker. El proceso se elige con `DELEGUARD_ENTRYPOINT=api|worker`. El sitio de docs es el servicio `docs` en `http://localhost:4321`.
+
+Solo documentación:
+
+```powershell
+docker compose -f deploy/docker-compose.yml up -d --build docs
+```
+
+## Variables y `appsettings`
+
+En ASP.NET las claves anidadas se expresan con `__` en el entorno.
+
+| Clave | Para qué | Valor local |
+| --- | --- | --- |
+| `ConnectionStrings__Postgres` | Base de datos | `Host=localhost;Port=5432;Database=deleguard;Username=deleguard;Password=deleguard` |
+| `Redis__ConnectionString` | Caché opcional | `localhost:6379` |
+| `Permits__SigningKey` | HMAC de permits | `deleguard-dev-permit-hmac-key-change-in-prod-32` |
+| `Permits__Issuer` | Issuer del permit | `deleguard` |
+| `DemoAuth__ApiKeyPepper` | Hash de API keys | `deleguard-dev-pepper` |
+| `DemoAuth__ConsoleToken` | Login de consola | `dgc_demo_console_local_dev_only` |
+| `DemoAuth__DemoOrganizationId` | Tenant demo | `org_demo` |
+| `ASPNETCORE_ENVIRONMENT` | Hosting | `Development` en host; `Production` en Compose |
+| `ASPNETCORE_URLS` | Bind | Compose: `http://+:8080` |
+| `DELEGUARD_ENTRYPOINT` | Proceso de la imagen | `api` o `worker` |
+| `Docs__PublicUrl` | Origen público de docs | `http://localhost:4321` |
+
+Archivos: `src/Deleguard.Api/appsettings.json` y `src/Deleguard.Workers/appsettings.json`. No hay `.env` en el repo: los secretos van por entorno, nunca en la imagen.
+
+## Datos sembrados al arrancar la API
+
+Si la org `org_demo` no existe, `DemoSeeder` crea:
+
+| Entidad | Id / valor |
+| --- | --- |
+| Organización | `org_demo` (“Deleguard Demo”) |
+| Entorno | `production` (`env_demo_production`) |
+| Agente | `invoice-agent` / `agt_invoice` |
+| API key | `dgk_demo_invoice_agent_local_dev_only` |
+| Acción | `invoice.cancel` (riesgo HIGH) |
+| Política | `invoice-cancel-production` v4, publicada |
+
+## Clientes de ejemplo
+
+```powershell
+$env:DELEGUARD_URL = "http://127.0.0.1:5080"   # o http://localhost:8082 en Compose
+$env:DELEGUARD_TOKEN = "dgk_demo_invoice_agent_local_dev_only"
+$env:DELEGUARD_CONSOLE = "dgc_demo_console_local_dev_only"
+python examples/python/authorize_demo.py
+```
+
+## Tests
+
+```powershell
+dotnet test tests/Deleguard.UnitTests
+dotnet test tests/Deleguard.IntegrationTests
+dotnet test tests/Deleguard.SecurityTests
+```
+
+Integración y seguridad levantan Postgres con Testcontainers.
+
+## Producción (mínimo)
+
+<Aside type="danger" title="Fail closed">
+Si Postgres o el PDP no están disponibles, la API responde **503** (`authorization_unavailable`) y **nunca** devuelve ALLOW. Redis caído no debe cambiar la decisión.
+</Aside>
+
+- Réplicas de API sin estado; secretos en el orquestador/KMS, no en el Dockerfile.
+- Credenciales de producción no deben autorizar staging (y al revés).
+- Cambia `Permits__SigningKey`, `DemoAuth__ApiKeyPepper` y el token de consola. El login demo se sustituye por SSO.
+- PITR de Postgres; Redis no es fuente de verdad.
+- El worker procesa el outbox (caducidad de aprobaciones, export de audit). Sin worker, las aprobaciones no expiran solas.
+
+Siguiente: [integrar en una solución existente](/integrate/existing-apps/).

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deleguard Evidence Receipt",
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "decision_id",
+    "action",
+    "decision",
+    "timestamps"
+  ],
+  "properties": {
+    "receipt_id": {
+      "type": "string"
+    },
+    "decision_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "ALLOW",
+        "DENY",
+        "REQUIRE_APPROVAL"
+      ]
+    },
+    "policy_version": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ]
+    },
+    "approval": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "execution": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "timestamps": {
+      "type": "object"
+    },
+    "previous_event_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_hash": {
+      "type": "string"
+    }
+  }
+}

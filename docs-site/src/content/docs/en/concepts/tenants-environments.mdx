@@ -1,0 +1,14 @@
+---
+title: Tenants and environments
+description: Organization isolation and why production and staging must not share API keys.
+---
+
+Every decision, agent, policy, and audit event carries `organization_id`. The demo console runs on `org_demo`. There is no org switcher in the MVP: one token sees one tenant.
+
+**Environments** (`production`, `staging`, …) hang off the org. Manage them in the console (`/environments`), `GET`/`POST`/`PATCH`/`DELETE` `/v1/environments`, or Administration MCP tools `environment_list|get|create|update|delete`. You pick one when creating an agent. A production API key **must not** authorize a staging agent. The Administration MCP serves this environment's setup guides via `docs_list` / `docs_get` (prompt `configure-environment`); the site is `http://localhost:4321`.
+
+Published policies are evaluated in the authenticated agent’s context. Keep separate policy sets per environment if the business rules differ (thresholds, approvers).
+
+The organization must keep at least one environment. Delete fails closed while agents are still bound. Renaming keeps the `env_…` id; authorize clients must send the new name.
+
+In Compose and locally the seed creates a single `production` environment: add `staging` when you need isolation.

@@ -1,0 +1,11 @@
+id: "ide-package-install"
+version: 1
+priority: 100
+match:
+  action: "package.install"
+  resource_type: "package"
+rules:
+  - name: "deny-package-install"
+    effect: "DENY"
+    reason: "IDE package installation requires an administrator-authored allow policy."
+fallback: "DENY"

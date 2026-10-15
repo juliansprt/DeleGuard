@@ -1,0 +1,11 @@
+id: "ide-git-push"
+version: 1
+priority: 100
+match:
+  action: "git.push"
+  resource_type: "git"
+rules:
+  - name: "deny-git-push"
+    effect: "DENY"
+    reason: "IDE Git push requires an administrator-authored allow policy."
+fallback: "DENY"

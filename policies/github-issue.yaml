@@ -1,0 +1,72 @@
+# Reference pack only. Replace both repository IDs before saving and testing a draft.
+# Repository facts must come from the trusted integration, never from model output.
+id: github-issue
+version: 1
+priority: 100
+match:
+  action: github.issue.create
+  resource_type: repository
+rules:
+  - name: deny-production
+    when:
+      any:
+        - { field: agent.environment, op: eq, value: production }
+        - { field: resource.attributes.repositoryEnvironment, op: eq, value: production }
+    effect: DENY
+    reason: Production repositories are outside the pilot scope
+  - name: deny-untrusted-host
+    when:
+      field: resource.attributes.providerHost
+      op: ne
+      value: api.github.com
+    effect: DENY
+    reason: Only the configured GitHub API host is supported
+  - name: deny-public-or-internal
+    when:
+      field: resource.attributes.visibility
+      op: ne
+      value: private
+    effect: DENY
+    reason: Pilot issues must remain in a private repository
+  - name: deny-archived
+    when:
+      field: resource.attributes.archived
+      op: eq
+      value: true
+    effect: DENY
+    reason: Archived repositories cannot receive pilot writes
+  - name: deny-disabled-issues
+    when:
+      field: resource.attributes.issuesEnabled
+      op: eq
+      value: false
+    effect: DENY
+    reason: Issues are disabled for this repository
+  - name: allow-sandbox-repository
+    when:
+      all:
+        - { field: agent.environment, op: eq, value: sandbox }
+        - { field: resource.id, op: eq, value: deleguard-pilot/sandbox }
+        - { field: resource.attributes.providerHost, op: eq, value: api.github.com }
+        - { field: resource.attributes.repositoryEnvironment, op: eq, value: sandbox }
+        - { field: resource.attributes.visibility, op: eq, value: private }
+        - { field: resource.attributes.archived, op: eq, value: false }
+        - { field: resource.attributes.issuesEnabled, op: eq, value: true }
+    effect: ALLOW
+    reason: Private sandbox repository is explicitly allowed for pilot tests
+  - name: approve-pilot-repository
+    when:
+      all:
+        - { field: agent.environment, op: eq, value: pilot }
+        - { field: resource.id, op: eq, value: deleguard-pilot/pilot-issues }
+        - { field: resource.attributes.providerHost, op: eq, value: api.github.com }
+        - { field: resource.attributes.repositoryEnvironment, op: eq, value: pilot }
+        - { field: resource.attributes.visibility, op: eq, value: private }
+        - { field: resource.attributes.archived, op: eq, value: false }
+        - { field: resource.attributes.issuesEnabled, op: eq, value: true }
+    effect: REQUIRE_APPROVAL
+    reason: Creating an issue in the pilot repository requires review
+    approval:
+      expires_in: 15m
+      approver_roles: [org-admin]
+fallback: DENY

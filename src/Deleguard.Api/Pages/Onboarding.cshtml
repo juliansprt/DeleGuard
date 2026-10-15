@@ -1,0 +1,28 @@
+@page "/onboarding"
+@model Deleguard.Api.Pages.OnboardingModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Crear espacio de trabajo";
+}
+
+<div class="auth-card">
+    <a class="brand" href="/">
+        <img class="brand-logo" src="~/img/brand-logo.png" alt="Deleguard" asp-append-version="true" />
+    </a>
+    <h1>@T["Un nombre y empezamos."]</h1>
+    <p class="lede" style="margin-bottom:1.25rem">
+        @T["Tu sesión está lista como"] <strong>@Model.Email</strong>@T[". Usaremos este nombre para organizar tus proyectos; puedes cambiarlo después."]
+    </p>
+    <form method="post" class="stack">
+        <p>
+            <label for="OrganizationName">@T["Nombre del espacio de trabajo"]</label>
+            <input asp-for="OrganizationName" required minlength="3" maxlength="80" autocomplete="organization" aria-describedby="workspace-name-help" />
+            <span class="hint" id="workspace-name-help">@T["De 3 a 80 caracteres. Ya sugerimos uno para que puedas continuar."]</span>
+        </p>
+        <button type="submit">@T["Crear espacio y elegir integración →"]</button>
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="err" role="alert">@T.Message(Model.Error)</p>
+        }
+    </form>
+</div>

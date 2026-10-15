@@ -1,0 +1,37 @@
+---
+title: Iniciar sesión
+description: Cómo entrar a la consola Deleguard con el token demo y por qué no usa la API key del agente.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+La consola es el lugar de los **humanos**. Vive en las mismas URLs que la API (`/login`). No es el sitio donde el agente autoriza.
+
+![Formulario Sign in to the console con el campo Console token](/console/login.png)
+
+<Steps>
+
+1. Abre `http://127.0.0.1:5080/login` (o `:8080` en Compose).
+2. Pega el **Console token**. En local: `dgc_demo_console_local_dev_only`.
+3. Pulsa **Continue**. Deleguard guarda la cookie `deleguard_console` y te lleva a Overview.
+
+</Steps>
+
+Si el token no vale, verás “That token is not valid.” Las páginas protegidas redirigen aquí si no hay sesión.
+
+## Cerrar sesión
+
+En el pie de la barra lateral, **Sign out** hace `POST /Login?handler=Logout` y vuelve a `/login`.
+
+<Aside type="caution" title="Dos secretos distintos">
+| | Consola | Agente |
+| --- | --- | --- |
+| Secreto | `dgc_…` | `dgk_…` |
+| Dónde | Este formulario (cookie) | Header `Authorization` (Playground vincula el agente elegido, sin pegar `dgk_`) |
+| Aprobar | Sí | No |
+| `POST /v1/authorize` | No | Sí |
+
+Pegar la API key del agente en Login **no** inicia sesión. Pegar el token de consola en authorize **no** autoriza.
+</Aside>
+
+En producción este formulario se sustituye por SSO. El resto de menús no cambia.

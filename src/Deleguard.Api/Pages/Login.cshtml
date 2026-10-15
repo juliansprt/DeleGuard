@@ -1,0 +1,55 @@
+@page
+@model Deleguard.Api.Pages.LoginModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Sign in";
+}
+
+<div class="auth-card">
+    <a class="brand" href="/">
+        <img class="brand-logo" src="~/img/brand-logo.png" alt="Deleguard" asp-append-version="true" />
+    </a>
+    <h1>@T["Sign in to the console"]</h1>
+    @if (Model.OidcEnabled)
+    {
+        <p class="lede" style="margin-bottom:1.25rem">@T["Humans sign in through Keycloak. This page is only shown when SSO cannot start."]</p>
+        <p><a class="button" href="/login">@T["Continue to Keycloak"]</a></p>
+        <p style="margin-top:0.75rem"><a class="button secondary" href="/login?register=1">@T["Create an account"]</a></p>
+    }
+    else
+    {
+        <p class="lede" style="margin-bottom:1.25rem">@T["Use your user email, or the emergency console token for the seeded org-admin."]</p>
+        <form method="post" class="stack">
+            <p>
+                <label for="Email">@T["Email"]</label>
+                <input asp-for="Email" type="email" autocomplete="username" />
+                <span class="hint">@T["Local demo:"] <code>admin@demo.local</code></span>
+            </p>
+            <p>
+                <label for="Password">@T["Password"]</label>
+                <input asp-for="Password" type="password" autocomplete="current-password" />
+                <span class="hint">@T["Local demo:"] <code>DeleguardDemo!23</code></span>
+            </p>
+            <button type="submit">@T["Continue"]</button>
+        </form>
+    }
+    @if (Model.AllowEmergencyToken)
+    {
+        <form method="post" class="stack" style="margin-top:1.25rem">
+            <p>
+                <label for="Token">@T["Emergency token"]</label>
+                <input asp-for="Token" type="password" autocomplete="off" />
+                <span class="hint">@T["Local recovery only."]</span>
+            </p>
+            <button type="submit" class="ghost">@T["Sign in with token"]</button>
+        </form>
+    }
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <p class="err">@T.Message(Model.Error)</p>
+        @if (Model.OidcEnabled)
+        {
+            <p style="margin-top:0.85rem"><a class="button ghost" href="/login?handler=Logout">@T["Sign out of Keycloak"]</a></p>
+        }
+    }
+</div>

@@ -1,0 +1,39 @@
+---
+title: Environments
+description: Create, rename, and delete isolation boundaries for agents.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+**Environments** (`/environments`) is under **Configure**. Seed creates `production`. Agents bind to one environment at registration; a production API key must not authorize a staging agent.
+
+Readers with `environments.read` see the directory. Create, rename, and delete require `environments.write`.
+
+## Create
+
+<Steps>
+
+1. **Name** — lowercase slug (`staging`, `qa`). This is `agent.environment` on authorize.
+2. **Create environment**.
+3. Pick that name when [registering an agent](/en/console/agents/).
+
+</Steps>
+
+## Rename
+
+Rename keeps the internal `env_…` id. Agents stay attached. Authorize clients must send the **new** name; a leftover `production` string will not match `prod`.
+
+HIGH risk: operators need an org-admin approval. The page links to the pending approval instead of renaming immediately.
+
+## Delete
+
+Delete is blocked when:
+
+- Agents are still bound (disable or recreate them elsewhere first).
+- It is the last environment in the organization.
+
+HIGH risk: operators need approval. Empty environments can be removed after that.
+
+<Aside type="caution">
+Do not share API keys across environments. Isolation is the point of this page.
+</Aside>

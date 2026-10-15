@@ -1,0 +1,59 @@
+---
+title: Policy YAML
+description: Product DSL, operators, match, fallback, and how Deleguard evaluates a policy.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+YAML is the **contract**. Rego and Cedar are not the customer surface. The native engine (`Deleguard.Policy`) evaluates it deterministically.
+
+## Shape
+
+```yaml
+id: invoice-cancel-production
+version: 4
+priority: 100
+match:
+  action: invoice.cancel
+  resource_type: invoice
+rules:
+  - name: example
+    when:
+      field: resource.attributes.amount
+      op: gt
+      value: 10000000
+    effect: REQUIRE_APPROVAL
+    reason: High value
+    approval:
+      expires_in: 15m
+      approver_roles: [billing-manager]
+fallback: DENY
+```
+
+| Field | Role |
+| --- | --- |
+| `id` / slug | Stable identity. |
+| `version` | Integer; after publish, authorize uses the published version, not a loose file number. |
+| `priority` | Higher wins among policies matching the same action. |
+| `match.action` / `match.resource_type` | Exact filter. |
+| `rules[].when` | Condition; missing fields → the condition is false. |
+| `rules[].effect` | `ALLOW` \| `DENY` \| `REQUIRE_APPROVAL` |
+| `fallback` | If no rule matches. Must be `DENY` in production. |
+
+## Operators
+
+`eq` `ne` `gt` `gte` `lt` `lte` `exists`
+
+Composition: `all:` (AND) and `any:` (OR).
+
+## Field paths
+
+- `action`
+- `agent.id` `agent.environment`
+- `actor.id` `actor.type`
+- `resource.type` `resource.id` `resource.attributes.<key>`
+- `context.<key>`
+
+<Aside type="note">
+An LLM may **propose** YAML. It is never published alone: parse → Test → human review → Publish. See [Policies](/en/console/policies/).
+</Aside>

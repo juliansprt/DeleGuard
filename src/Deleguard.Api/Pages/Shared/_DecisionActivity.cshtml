@@ -1,0 +1,11 @@
+@model IReadOnlyList<Deleguard.Application.Abstractions.DecisionActivity>
+<div class="card table-wrap"><table class="data"><caption class="sr-only">@T["Decisiones y resultados reportados"]</caption><thead><tr><th>@T["Fecha (UTC)"]</th><th>@T["Agente / acción"]</th><th>@T["Decisión"]</th><th>@T["Resultado"]</th><th>@T["Modelo / ruta"]</th><th>@T["Costo reportado"]</th></tr></thead><tbody>
+@foreach (var d in Model)
+{
+    <tr><td><a href="/audit/decisions/@d.Id">@d.CreatedAt.ToString("MM-dd HH:mm:ss")</a></td><td>@d.Agent<div><code>@d.Action</code></div><div class="hint">@d.Resource</div><span class="badge neutral">@T[d.Source=="playground"?"Console test":d.Source=="ide"?"IDE request":"Application request"]</span></td>
+    <td><span class="badge @ConsoleFormatting.DecisionBadge(d.Decision)">@d.Decision</span><div class="muted">@d.Reason</div></td>
+    <td>@((d.ExecutionStatus is null ? null : T[d.ExecutionStatus]) ?? (d.Decision == "ALLOW" ? T["Sin reporte"] : T["Sin autorización"]))</td>
+    <td>@(d.RequestedModel ?? "—") @if (d.UsedModel is not null) { <span>→ @d.UsedModel</span> }<div class="muted">@d.RouteReason</div></td>
+    <td>@(d.CostUsd is decimal cost ? cost.ToString("0.######") + " USD" : "—")</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p>@T["No hay decisiones para esta selección. Prueba otra vista o realiza una solicitud desde tu integración."]</p> }</div>

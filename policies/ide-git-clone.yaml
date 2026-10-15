@@ -1,0 +1,11 @@
+id: "ide-git-clone"
+version: 1
+priority: 100
+match:
+  action: "git.clone"
+  resource_type: "git"
+rules:
+  - name: "deny-git-clone"
+    effect: "DENY"
+    reason: "IDE Git clone requires an administrator-authored allow policy."
+fallback: "DENY"

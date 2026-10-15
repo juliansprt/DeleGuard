@@ -1,0 +1,11 @@
+id: "ide-settings-change"
+version: 1
+priority: 100
+match:
+  action: "ide.settings.change"
+  resource_type: "ide"
+rules:
+  - name: "deny-ide-settings-change"
+    effect: "DENY"
+    reason: "IDE settings changes require an administrator-authored allow policy."
+fallback: "DENY"

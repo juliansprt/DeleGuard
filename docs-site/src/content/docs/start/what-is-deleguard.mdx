@@ -1,0 +1,55 @@
+---
+title: Qué es Deleguard
+description: Deleguard autoriza acciones de agentes de IA con políticas deterministas, aprobación humana y evidencia.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Deleguard es una plataforma de **decisión de política + aprobación + evidencia**. Un agente (un script, un bot de facturas, un servidor MCP) llama `POST /v1/authorize` **antes** de ejecutar una acción sensible y recibe una de tres respuestas:
+
+- `ALLOW` — la política autoriza; Deleguard emite un permit de corta vida.
+- `DENY` — la acción no debe ejecutarse.
+- `REQUIRE_APPROVAL` — un humano debe revisar hechos canónicos y aprobar una vez.
+
+```text
+agente custom → POST /v1/authorize → ALLOW | DENY | REQUIRE_APPROVAL
+                                 → aprobación → permit → evidencia → audit
+```
+
+## Qué no es
+
+Deleguard no enruta modelos, no guarda memoria de conversación y no observa prompts. El modelo **nunca** está en el camino de ALLOW/DENY. Si el PDP o la base de datos fallan, la API responde **503** y no fabrica un ALLOW.
+
+## Vocabulario mínimo
+
+| Término | Significado |
+| --- | --- |
+| **Agente** | Identidad no humana (`invoice-agent`) con una API key `dgk_…`. |
+| **Actor** | Humano o servicio en cuyo nombre actúa el agente. |
+| **Acción** | Nombre estable (`invoice.cancel`). Las acciones desconocidas se deniegan. |
+| **Recurso** | Objeto + atributos (`amount`, `status`, `reportedToTaxAuthority`). |
+| **Política YAML** | Contrato del cliente. Solo la versión **Published** decide. |
+| **Permit** | Token firmado que prueba un ALLOW (o una aprobación) acotado. |
+| **Evidencia** | `POST /v1/executions` después de ejecutar, ligado al `decision_id`. |
+
+## Credenciales que no se mezclan
+
+| Credencial | Prefijo | Sirve para | No sirve para |
+| --- | --- | --- | --- |
+| API key de agente | `dgk_` | `/v1/authorize`, `/v1/decisions`, `/v1/executions` | Aprobar, abrir la consola |
+| Token de consola | `dgc_` | Consola Razor, `/v1/approvals`, admin, audit | Autorizar como agente |
+
+<Aside type="caution" title="Invariante">
+Las claves de agente no pueden aprobar. Las credenciales humanas/consola no pueden llamar `/v1/authorize` como si fueran un agente.
+</Aside>
+
+## Recorrido de la demo
+
+El vertical slice del repositorio es **cancelar una factura** (`invoice.cancel`):
+
+1. Registras agente, acción y política (ya vienen sembrados en local).
+2. El agente pide autorización con atributos del recurso.
+3. Si hace falta, un humano ve hechos canónicos en **Approvals** — nunca la prosa del modelo.
+4. Tras ejecutar, reportas evidencia y el **Audit** encadena el evento.
+
+Siguiente: [Quick start](/start/quickstart/) o [integrar con un LLM](/integrate/with-llm/).

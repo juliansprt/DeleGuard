@@ -1,0 +1,16 @@
+---
+title: Permits and evidence
+description: What a permit proves, when to report execution, and why “the agent said done” does not count.
+---
+
+A **permit** is an HMAC token (issuer + signing key) that binds the decision to a resource and a time window. ALLOW and Approve once issue it. DENY does not.
+
+**Evidence** is `POST /v1/executions` with `decision_id` and `status`. Ideally it includes an anchor from a trusted system: ERP transaction id, commit hash, signed webhook id — not a model chat saying “done”.
+
+Lifecycle:
+
+```text
+REQUESTED → DECIDED → APPROVAL_PENDING? → PERMITTED → EXECUTION_REPORTED
+```
+
+If the resource changes between decision and execution (amount, tax status), authorize again. That is TOCTOU control: the permit is not a bearer blank check.

@@ -1,0 +1,13 @@
+---
+description: Deleguard security invariants for authorization. Apply on every change.
+alwaysApply: true
+---
+
+# Deleguard invariants
+
+- Authorization is deterministic. Never call an LLM, Slack, email, or analytics on the ALLOW/DENY path.
+- `DENY` is HTTP 200 with `decision=DENY`. Auth/schema/outages use 4xx/5xx.
+- Fail closed: database or PDP failure returns 503 and never fabricates ALLOW.
+- Default deny. Missing policy, missing attributes, or unknown action is DENY.
+- Do not log prompts, chain-of-thought, or raw model output.
+- Agent API keys cannot approve. Human/console credentials cannot call `/v1/authorize` as an agent.

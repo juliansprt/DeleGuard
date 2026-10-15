@@ -1,0 +1,64 @@
+@model Deleguard.Api.Pages.Environments.IndexModel
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>@T["Environment"]</th>
+                <th>@T["Agents"]</th>
+                @if (Model.CanWrite)
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var environment in Model.Environments)
+        {
+            var canDelete = Model.CanWrite && environment.AgentCount == 0 && Model.Environments.Count > 1;
+            <tr>
+                <td>
+                    <div>
+                        <span class="badge @(string.Equals(environment.Name, "production", StringComparison.OrdinalIgnoreCase) ? "high" : "neutral")">@environment.Name</span>
+                    </div>
+                    <div class="muted id-sub">@environment.Id</div>
+                </td>
+                <td>@environment.AgentCount</td>
+                @if (Model.CanWrite)
+                {
+                    <td>
+                        <div class="row-actions">
+                            <form method="post" asp-page-handler="Update" class="row" style="gap:0.4rem;align-items:center;margin:0">
+                                <input type="hidden" name="environmentId" value="@environment.Id" />
+                                <label class="sr-only" for="updated-@environment.Id">@T["Rename"] @environment.Name</label>
+                                <input id="updated-@environment.Id" name="updatedName" value="@environment.Name" autocomplete="off" style="width:9rem" />
+                                <button type="submit" class="ghost">@T["Rename"]</button>
+                            </form>
+                            @if (canDelete)
+                            {
+                                <form method="post" asp-page-handler="Delete">
+                                    <input type="hidden" name="environmentId" value="@environment.Id" />
+                                    <button type="submit"
+                                            class="ghost"
+                                            data-confirm
+                                            data-confirm-title="@T["Delete this environment?"]"
+                                            data-confirm-body="@T["This cannot be undone. Agents must already be gone; the organization keeps at least one environment."]"
+                                            data-confirm-action="@T["Delete environment"]"
+                                            data-confirm-danger="true">@T["Delete"]</button>
+                                </form>
+                            }
+                            else if (environment.AgentCount > 0)
+                            {
+                                <span class="muted">@T["Has agents"]</span>
+                            }
+                            else
+                            {
+                                <span class="muted">@T["Last environment"]</span>
+                            }
+                        </div>
+                    </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

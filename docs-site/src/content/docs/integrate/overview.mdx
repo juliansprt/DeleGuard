@@ -1,0 +1,65 @@
+---
+title: Niveles de integración
+description: Cuatro formas de meter Deleguard delante de una acción sensible, desde HTTP directo hasta un proxy.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**¿Usas un LLM con tools?** Empieza por [Integrar con un LLM](/integrate/with-llm/): el modelo propone `cancel_invoice`, tu orquestador llama authorize, y solo entonces tocas el ERP.
+
+El único requisito del agente es **poder hacer HTTP**. Un script con llamadas a OpenAI o Anthropic es un cliente válido. El punto de enganche es siempre el mismo: **después de que el modelo propone una tool, antes de ejecutarla**.
+
+```text
+LLM / agente → acción propuesta → Deleguard authorize → tu código ejecuta la tool
+```
+
+## Nivel A — SDK / API directa (MVP)
+
+La mejor integración para empezar. En cada tool handler, llama `POST /v1/authorize` y ramifica:
+
+| `decision` | Tu código |
+| --- | --- |
+| `ALLOW` | Ejecuta. Luego `POST /v1/executions` con `decision_id`. |
+| `DENY` | No ejecutes. Devuelve el `reason` al orquestador. |
+| `REQUIRE_APPROVAL` | No ejecutes. Guarda `approval_id` y espera (o notifica a un humano). |
+
+Guías: [HTTP](/integrate/http/), [Python](/integrate/python/), [.NET](/integrate/dotnet/).
+
+## Nivel B — middleware / interceptor
+
+Envuelve el ejecutor interno para que **ninguna** tool se salte authorize. Un solo sitio de enforcement:
+
+```csharp
+await protectedExecutor.ExecuteAsync(
+    action: "invoice.cancel",
+    resource: invoice,
+    execute: () => invoiceService.Cancel(invoice.Id));
+```
+
+El wrapper llama authorize, respeta DENY/REQUIRE_APPROVAL y, si hay ALLOW, corre `execute` y reporta evidencia. Detalle en [soluciones existentes](/integrate/existing-apps/).
+
+## Nivel C — Guard MCP (PEP)
+
+El cliente corre `src/Deleguard.McpGuard` en su proyecto. Cursor habla solo con el Guard. El Guard mapea `servidor/tool` a `action` + `resource`, llama `POST /v1/authorize` y reenvía `tools/call` **solo** si hay ALLOW. Las tools sin mapping se deniegan. Un humano aprueba en la consola; el Guard no tiene tool approve.
+
+Guía: [Guard MCP](/integrate/mcp-guard/).
+
+<Aside type="danger" title="No registres el MCP dos veces">
+Sustituye las entradas MCP downstream por el Guard. Un segundo MCP en Cursor hacia las mismas tools se salta la política.
+</Aside>
+
+## Nivel D — proxy / PEP
+
+Para APIs que ya se enrutan por un gateway o sidecar. Enforcement sin tocar el código del agente. Alcance enterprise posterior.
+
+<Aside type="tip" title="Empieza en A, endurece hacia B">
+No esperes a un gateway. Un `if` delante de `invoiceService.Cancel` ya es Deleguard. El middleware (B) evita que un handler nuevo se olvide de llamar authorize.
+</Aside>
+
+## Identidad
+
+- La API key identifica **organización + agente**.
+- El `actor` debería venir de tu capa de auth de confianza, no de un texto libre del modelo.
+- Nunca confíes un `actor.id` arbitrario de un agente no vinculado criptográficamente a la sesión.
+
+Siguiente: [integrar con un LLM](/integrate/with-llm/) o [cómo engancharlo en una app que ya existe](/integrate/existing-apps/).

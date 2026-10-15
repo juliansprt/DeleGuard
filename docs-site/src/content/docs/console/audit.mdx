@@ -1,0 +1,36 @@
+---
+title: Audit
+description: Ledger append-only de decisiones, aprobaciones y ejecuciones, con cadena de hashes.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Audit** (`/audit`) está en **Observe**. Es el libro de contabilidad de la autorización: no se edita, no se borra. Cada evento apunta al hash del anterior.
+
+![Tabla Audit con Decision, Approval y Execution, más Payload and hash chain](/console/audit.png)
+
+## Cómo leerlo
+
+| Columna | Contenido |
+| --- | --- |
+| **Time** | UTC compacto (`MM-dd HH:mm:ss`); el hover muestra el timestamp completo. |
+| **Event** | `Decision`, `Approval`, `Expired` o `Execution`. |
+| **Outcome** | `ALLOW`, `DENY`, `REQUIRE_APPROVAL` o `APPROVE` cuando el payload lo trae. |
+| **Summary** | Acción, recurso, actor — sin repetir el outcome. |
+| **Decision** | Id `dec_…` corto; el hover muestra el valor completo. |
+
+Las pestañas filtran por familia de evento. La búsqueda coincide con acción, recurso, id de decisión y texto del payload.
+
+**Payload** abre el JSON y los campos `prev` / `hash` en esa fila. Sirve para demostrar integridad: si alguien alterara un evento, la cadena se rompe.
+
+Si está vacío, **Open Playground** genera el primer eslabón.
+
+<Aside type="note">
+La consola lista hasta 100 eventos. El mismo feed está en `GET /v1/audit/events` (credencial de consola). Authorize no escribe prompts ni salida del modelo.
+</Aside>
+
+## Activity y expedientes
+
+Activity (`/audit/activity`) muestra decisiones paginadas y filtros de evidencia pendiente, fallos de hoy, llamadas del Gateway y denegaciones de presupuesto de hoy. Abre una fecha para consultar el expediente. **Export record** descarga JSON versionado sin tokens de permisos ni metadatos arbitrarios. El ledger sigue en `/audit`.
+
+![Expediente de decisión](/console/decision-record.png)
