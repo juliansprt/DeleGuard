@@ -15,4 +15,3 @@
 - [ ] The change is focused and follows [CONTRIBUTING.md](https://github.com/juliansprt/DeleGuard/blob/main/CONTRIBUTING.md).
 - [ ] Relevant validation results and documentation updates are included.
 - [ ] No secrets or private data are included; authorization or policy changes preserve the documented guarantees and include relevant regression coverage.
-

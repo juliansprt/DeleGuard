@@ -102,4 +102,3 @@ Use the [execution contract](deleguard_dev_pack/spec/execution-v1.md) for the de
 - Use English for contribution documentation and pull request descriptions. Preserve the intended language when updating localized product documentation.
 - Never commit real API keys, tokens, cookies, private keys, `.env` files, database dumps, or customer data. Use documented local demo credentials and redact logs and screenshots. Do not publish sensitive vulnerability details in an issue or pull request.
 - Preserve third-party attribution and notices. The project's own source does not yet include a license; do not add or change licensing terms as part of an unrelated contribution. See the existing [third-party notices](src/Deleguard.Api/wwwroot/lib/codemirror/THIRD_PARTY_NOTICES.md).
-
