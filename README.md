@@ -1,3 +1,5 @@
+<h1 align="center">DeleGuard</h1>
+
 ![DeleGuard: control para agentes de IA mediante políticas, aprobaciones y evidencia](docs/assets/readme-hero.svg)
 
 <p align="center">
@@ -9,7 +11,7 @@
   <a href="src/Deleguard.Api/Deleguard.Api.csproj"><img src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&amp;logo=dotnet&amp;logoColor=white" alt=".NET 10"></a>
   <a href="deploy/docker-compose.yml"><img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&amp;logo=postgresql&amp;logoColor=white" alt="PostgreSQL 16"></a>
   <a href="policies/invoice-cancel-production.yaml"><img src="https://img.shields.io/badge/Pol%C3%ADticas-YAML-087F8C?style=flat-square" alt="Políticas YAML"></a>
-  <a href="sdks/README.md"><img src="https://img.shields.io/badge/Estado-beta-D49A24?style=flat-square" alt="Proyecto en estado beta"></a>
+  <a href="sdks/README.md"><img src="https://img.shields.io/badge/SDKs-beta-D49A24?style=flat-square" alt="SDKs en estado beta"></a>
 </p>
 
 <p align="center">
@@ -163,20 +165,20 @@ La evidencia registra lo reportado por tu integración; no verifica de forma ind
 
 ## La consola por dentro
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>Aprobaciones con contexto</h3>
-      <a href="docs-site/public/console/approval-detail.png"><img src="docs-site/public/console/approval-detail.png" alt="Revisión de invoice.cancel con agente, monto, política, vencimiento y botones para aprobar o denegar" width="100%"></a>
-      <p>Revisa el recurso, el motivo y la vigencia antes de resolver una operación sensible.</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>Del permiso al resultado</h3>
-      <a href="docs-site/public/console/decision-record.png"><img src="docs-site/public/console/decision-record.png" alt="Registro de decisión demo con política aplicada, permiso y evidencia de la ejecución reportada" width="100%"></a>
-      <p>Consulta la decisión, el permiso emitido y la evidencia que reportó la integración.</p>
-    </td>
-  </tr>
-</table>
+### Aprobaciones con contexto
+
+Revisa el recurso, el motivo y la vigencia antes de resolver una operación sensible.
+
+[![Revisión de invoice.cancel con agente, monto, política, vencimiento y botones para aprobar o denegar](docs-site/public/console/approval-detail.png)](docs-site/public/console/approval-detail.png)
+
+<details>
+<summary><strong>Del permiso al resultado: ver el registro de una decisión</strong></summary>
+
+Consulta la decisión, el permiso emitido y la evidencia que reportó la integración.
+
+![Registro de decisión demo con política aplicada, permiso y evidencia de la ejecución reportada](docs-site/public/console/decision-record.png)
+
+</details>
 
 <details>
 <summary><strong>Ver el editor visual de políticas y sus casos de regresión</strong></summary>

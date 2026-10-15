@@ -4,6 +4,16 @@
 
 Esta guía amplía el [inicio rápido](../README.md#inicio-rápido) con configuración, componentes opcionales, validación y diagnóstico. Ejecuta los comandos desde la raíz del repositorio salvo que se indique otra carpeta.
 
+## Herramientas opcionales
+
+| Uso | Requisito |
+| --- | --- |
+| Ejemplo de autorización | Python 3, sin paquetes externos |
+| Sitio de documentación local | Node.js **22.12 o superior** y npm |
+| Cliente TypeScript sin compilador | Node.js **22.18 o superior** |
+
+No necesitas claves de proveedores de IA para la demo básica. API y worker utilizan los requisitos del inicio rápido: SDK .NET 10, Docker con contenedores Linux y Compose v2.
+
 ## Accesos de demostración
 
 El inicio rápido usa PostgreSQL en `localhost:5432` con base, usuario y contraseña `deleguard`; Redis se publica en `localhost:6379`. API y worker se ejecutan en `Development`. Estas credenciales son públicas y solo sirven para desarrollo local.
