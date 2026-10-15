@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title description">
+  <title id="title">DeleGuard — Control para agentes de IA.</title>
+  <desc id="description">Políticas, aprobaciones y evidencia. Una petición a POST /v1/authorize devuelve ALLOW, REQUIRE_APPROVAL o DENY.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#071e36"/>
+      <stop offset="1" stop-color="#0a2948"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#00d8d3"/>
+      <stop offset="1" stop-color="#2489ff"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="360" rx="20" fill="url(#background)"/>
+  <path d="M0 338H1280" stroke="#163956"/>
+  <path d="M64 338H232" stroke="url(#accent)" stroke-width="3"/>
+  <circle cx="1210" cy="-102" r="335" fill="none" stroke="#17405c" opacity=".55"/>
+  <circle cx="1210" cy="-102" r="265" fill="none" stroke="#17405c" opacity=".35"/>
+
+  <!-- A vector interpretation of the existing DeleGuard shield mark. -->
+  <g transform="translate(64 52)">
+    <path d="M42 0 82 17v29c0 24-15 42-40 56C17 88 2 70 2 46V17Z" fill="#0453a2"/>
+    <path d="M42 0v102C17 88 2 70 2 46V17Z" fill="#00396d"/>
+    <path d="m42 15 28 12v20c0 17-10 30-28 41C24 77 14 64 14 47V27Z" fill="#071e36"/>
+    <rect x="18" y="31" width="48" height="35" rx="16" fill="#003650"/>
+    <circle cx="31" cy="48" r="4.5" fill="#00d8d3"/>
+    <circle cx="53" cy="48" r="4.5" fill="#00d8d3"/>
+  </g>
+
+  <g font-family="'Segoe UI', Arial, sans-serif">
+    <text x="170" y="113" fill="#f5fbff" font-size="58" font-weight="700" letter-spacing="-2">DeleGuard</text>
+    <text x="173" y="144" fill="#00d8d3" font-size="13" font-weight="600" letter-spacing="2.5">POLICY · APPROVAL · EVIDENCE</text>
+    <text x="64" y="217" fill="#f5fbff" font-size="36" font-weight="600" letter-spacing="-.7">Control para agentes de IA.</text>
+    <text x="66" y="256" fill="#b1c8dd" font-size="21">Políticas · Aprobaciones · Evidencia</text>
+    <text x="66" y="298" fill="#779bb8" font-size="14">Cada acción empieza con una decisión.</text>
+
+    <!-- The decision tree is intentionally independent of any product UI. -->
+    <rect x="748" y="42" width="470" height="276" rx="18" fill="#06182c" stroke="#244962"/>
+    <circle cx="775" cy="69" r="3.5" fill="#00d8d3"/>
+    <text x="789" y="75" fill="#d7e7f4" font-family="Consolas, 'Courier New', monospace" font-size="17">POST /v1/authorize</text>
+    <path d="M770 94H1196" stroke="#1a354e"/>
+
+    <path d="M897 206h29m0-64v128m0-128h27m-27 64h27m-27 64h27" fill="none" stroke="#3f6a87" stroke-width="1.5"/>
+    <rect x="774" y="178" width="123" height="56" rx="10" fill="#102d47" stroke="#37617e"/>
+    <text x="835.5" y="201" fill="#e4f2fb" font-size="16" font-weight="600" text-anchor="middle">Acción</text>
+    <text x="835.5" y="220" fill="#9bb8cf" font-size="12" text-anchor="middle">del agente</text>
+    <circle cx="926" cy="206" r="3.5" fill="#00d8d3"/>
+
+    <rect x="953" y="118" width="241" height="48" rx="10" fill="#0b343b" stroke="#206268"/>
+    <circle cx="975" cy="142" r="5" fill="#00d8d3"/>
+    <text x="991" y="148" fill="#8af4e8" font-family="Consolas, 'Courier New', monospace" font-size="17" font-weight="700">ALLOW</text>
+    <path d="m1165 141 5 5 9-10" fill="none" stroke="#00d8d3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="953" y="182" width="241" height="48" rx="10" fill="#302d2a" stroke="#686047"/>
+    <circle cx="975" cy="206" r="5" fill="#efc47a"/>
+    <text x="991" y="212" fill="#f6d494" font-family="Consolas, 'Courier New', monospace" font-size="16" font-weight="700">REQUIRE_APPROVAL</text>
+
+    <rect x="953" y="246" width="241" height="48" rx="10" fill="#302335" stroke="#65415b"/>
+    <circle cx="975" cy="270" r="5" fill="#f58da5"/>
+    <text x="991" y="276" fill="#ffb3c3" font-family="Consolas, 'Courier New', monospace" font-size="17" font-weight="700">DENY</text>
+    <path d="m1167 265 10 10m0-10-10 10" fill="none" stroke="#f58da5" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
