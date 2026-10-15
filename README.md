@@ -223,6 +223,6 @@ At the time of that validation, unresolved issues included NuGet `NU1902`/`NU190
 
 ### Contributing
 
-Use [issues](https://github.com/juliansprt/DeleGuard/issues) to propose changes or describe reproducible bugs. To contribute code, review the contracts and [project instructions](AGENTS.md), run the relevant validation suites, and open a pull request describing the problem, solution, and validation evidence.
+Contributions go through a **pull request to `main`**, maintainer review, and the configured CI checks. Read the [contribution guide](CONTRIBUTING.md) for the fork and branch workflow, validation commands, and authorization guarantees. Use [issues](https://github.com/juliansprt/DeleGuard/issues) to propose changes or report reproducible bugs.
 
 The project's own code does not yet include a license. Licenses for redistributed components are listed in the [third-party notices](src/Deleguard.Api/wwwroot/lib/codemirror/THIRD_PARTY_NOTICES.md).
